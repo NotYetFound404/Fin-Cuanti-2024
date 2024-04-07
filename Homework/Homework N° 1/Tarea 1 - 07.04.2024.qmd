@@ -1,6 +1,13 @@
 ---
 title: "Tarea 1"
 bibliography: references.bib
+format: 
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: true
+editor: visual
+theme: cosmo 
 ---
 
 # Instructions
@@ -27,15 +34,21 @@ Also:
     -   Using `sapply`
     -   As a matrix without loops or sapply or replicate
 
-# Vasicek Model
+# 1. Vasicek Model
 
-![Source: [@wiki:vasicek]](images/clipboard-1754127638.png)
+The interest rate is modeled by the following equation:
+
+$$
+\mathrm{d}r_{t} = a(b - r_{t})\,\mathrm{d}t + \sigma\,\mathrm{d}W_{t}
+$$
+
+Source: [@wiki:vasicek]
 
 -   b: Long term mean level
 -   a: Speed of reversion
 -   sigma : instantaneous volatility
 
-Revisar las paginas @vanAVR
+For more detail, check @vanAVR
 
 ## Implementation 1: Using a *For Loop*
 
@@ -80,3 +93,236 @@ for (i in 1:simulations) {
 5.  **Explanation:** In the Quarto document, you can explain each step in detail:
 
 Parameter Initialization: Describe the significance of each parameter and how they affect the Vasicek model. Arrays Initialization: Explain why we initialize arrays to store interest rates and time periods. Simulation Loop: Describe how the simulation loop works, including the generation of random shocks and updating the interest rate based on the Vasicek model equation. Plotting: Explain the plotted results, such as the behavior of interest rates over time and the concept of mean reversion represented by the long-term average line.
+
+# 2. Standard Brownian motion
+
+We are modelling using the following equation
+
+$$
+W_{i+1} = W_i + \sqrt{t_{i+1} - t_i} \cdot Z_i
+$$
+
+$$
+W_{i+1} = W_i + \sqrt{d_t} \cdot Z_i
+$$
+
+Where:
+
+-   $W_{i+1}$ represents value W at time i+1
+
+-   $W_{i}$ represents value W at time i
+
+-   $t_{i+1}$ and $t_{i}$ represents value time periods
+
+-   $Z_{i}$ represents a random variable at time T
+
+**Algunas equivalencias**
+
+-   dT en un loop = dT usando diff
+
+```{r}
+rm(list = ls())
+
+n <-  10
+T <- 1
+t <- c(0, sort(runif(n, min = 0, max = T)))
+dt <- numeric(n)
+
+
+#With a loop
+for (i in 1:n) {
+  dt[i] <- sqrt(t[i + 1] - t[i])
+}
+
+dt
+
+#without a loop
+dt_v2 <- sqrt(diff(t))
+dt_v2
+
+#check
+all(dt %in% dt_v2)
+
+rm(list = ls())
+```
+
+-   Los pasos 1 al 2 pueden son la funcion 'w_setup*'*
+
+```{r}
+#originalmente-----------
+# Setup
+set.seed(2024)
+n <- 10000
+T <- 1
+df <- data.frame(index = seq(1, n+1))
+
+# 1st step
+t <- sort(runif(n, min = 0, max = T))
+t <- c(0, t)
+W <- numeric(n + 1)
+W[1] <- 0
+
+# 2nd step
+Z <- rnorm(n)
+
+
+
+#equivalencia-------------
+w_setup <- function(n, T, seed.num = 2024) {
+  #setup
+  set.seed(seed.num)
+  n <- n
+  T <- T
+  df <- data.frame(index = seq(1, n+1))
+  # 1st step
+  t <- c(0, sort(runif(n, min = 0, max = T)))
+  W <- numeric(n + 1)
+  W[1] <- 0
+  # 2nd step
+  Z <- rnorm(n)
+  # save to global env
+  assign("df", df, envir = .GlobalEnv)
+  assign("n", n, envir = .GlobalEnv)
+  assign("t", t, envir = .GlobalEnv)
+  assign("T", T, envir = .GlobalEnv)
+  assign("W", W, envir = .GlobalEnv)
+  assign("Z", Z, envir = .GlobalEnv)
+  
+}
+w_setup(n = 10, T = 1)
+```
+
+## Base implementation
+
+```{r}
+rm(list = ls())
+# Setup -----------
+library(ggplot2)
+set.seed(2024)
+n <- 10000
+T <- 1
+df <- data.frame(index = seq(1, n+1))
+#head(df)
+
+## Standard Brownian motion - Base implementation ------------------------
+
+# 1st step
+t <- sort(runif(n, min = 0, max = T))
+t <- c(0, t)
+W <- numeric(n + 1)
+W[1] <- 0
+
+# 2nd step
+Z <- rnorm(n)
+
+# 3rd step
+
+for (i in 1:n) {
+  W[i + 1] <- W[i] + sqrt(t[i + 1] - t[i])*Z[i]
+}
+
+
+df["t"] <- t
+df["W"] <- W
+
+# 4th step
+ggplot(data = df, aes(x = t, y = W)) +
+  geom_step() +
+  labs(
+    title = "Standard Brownian motion path simulation",
+    x = "Time (years)",
+    y = "Brownian motion"
+  )
+
+
+```
+
+Parametros
+
+```{r}
+n <- 10
+T <- 1
+w_setup <- function(n, T, seed.num = 2024) {
+  #setup
+  set.seed(seed.num)
+  n <- n
+  T <- T
+  df <- data.frame(index = seq(1, n+1))
+  # 1st step
+  t <- c(0, sort(runif(n, min = 0, max = T)))
+  W <- numeric(n + 1)
+  W[1] <- 0
+  # 2nd step
+  Z <- rnorm(n)
+  # save to global env
+  assign("df", df, envir = .GlobalEnv)
+  assign("n", n, envir = .GlobalEnv)
+  assign("t", t, envir = .GlobalEnv)
+  assign("T", T, envir = .GlobalEnv)
+  assign("W", W, envir = .GlobalEnv)
+  assign("Z", Z, envir = .GlobalEnv)
+  
+}
+
+```
+
+## Using sapply
+
+```{r}
+# Setup -----------
+w_setup(n = n, T = T)
+# 3rd step
+#falta explicar porque funciona
+W <- c(0, sapply(2:(n + 1), function(i) {
+  W[i - 1] + sqrt(t[i] - t[i - 1]) * Z[i - 1]
+}))
+W
+df["W"] <- W
+df["t"] <- t
+# 4th step
+ggplot(data = df, aes(x = t, y = W)) +
+  geom_step() +
+  labs(
+    title = "Standard Brownian motion path simulation (sapply)",
+    x = "Time (years)",
+    y = "Brownian motion"
+  )
+```
+
+## Using no loops/sapply
+
+```{r}
+# Setup -----------
+w_setup(n = n, T = T)
+# 3rd step
+#falta explicar porque funciona
+
+#originalmente
+# for (i in 1:n) {
+#   W_og[i + 1] <- W_og[i] + sqrt(t[i + 1] - t[i])*Z[i]
+# }
+# W_og
+
+
+increments <- sqrt(diff(t)) * Z
+W <- c(0, cumsum(increments))
+
+# Add t and W to the data frame
+df["t"] <- t
+df["W"] <- W
+
+# 4th step
+ggplot(data = df, aes(x = t, y = W)) +
+  geom_step() +
+  labs(
+    title = "Standard Brownian motion path simulation (no loops)",
+    x = "Time (years)",
+    y = "Brownian motion"
+  )
+```
+
+# 3. Brownian motion
+
+# 4. Geometric Brownian motion
+
+a
