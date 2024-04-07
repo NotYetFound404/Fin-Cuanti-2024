@@ -1,0 +1,82 @@
+---
+title: "Tarea 1"
+bibliography: references.bib
+---
+
+# Instructions
+
+1.  Simulate the Vasicek model simulation.
+
+2.  Understand the previous simulations and try to implemented it on your way.
+
+    1.  Standard Brownian Motion
+
+    2.  Brownian Motion
+
+    3.  Geometric Brownian Motion
+
+Also:
+
+-   Explain each part of the code.
+
+-   Use the stochastic equation of the Vasick model
+
+-   Ideas for implementation
+
+    -   Using `replicate`
+    -   Using `sapply`
+    -   As a matrix without loops or sapply or replicate
+
+# Vasicek Model
+
+![Source: [@wiki:vasicek]](images/clipboard-1754127638.png)
+
+-   b: Long term mean level
+-   a: Speed of reversion
+-   sigma : instantaneous volatility
+
+Revisar las paginas @vanAVR
+
+## Implementation 1: Using a *For Loop*
+
+1.  **Initialize Parameters:** First, let's initialize the parameters needed for the model. We'll define b, a, σ, the time step (dt), the number of time periods (n), and the number of simulations (simulations).
+
+```{r}
+
+b <- 0.05  # Long-term average interest rate
+a <- 0.1   # Speed of mean reversion
+sigma <- 0.02  # Volatility
+dt <- 1/252  # Time step (assuming daily simulations)
+n <- 252     # Number of time periods (1 year)
+simulations <- 10  # Number of simulations
+```
+
+2.  **Initialize Arrays:** Next, let's initialize empty arrays to store the simulated interest rates (r) and time periods (t).
+
+```{r}
+r <- numeric(n)  # Array to store interest rates
+t <- numeric(n)  # Array to store time periodsx
+```
+
+3.  **Simulation Loop:** Now, we'll use a for loop to simulate the Vasicek model for each time period and each simulation. Within the loop, we'll generate random shocks (dW) using a normal distribution and update the interest rate according to the Vasicek model equation.
+
+```{r}
+
+for (i in 1:simulations) {
+  r[1] <- b  # Initial interest rate at long-term average
+  for (j in 2:n) {
+    dW <- rnorm(1, mean = 0, sd = sqrt(dt))  # Random shock
+    r[j] <- r[j-1] + a * (b - r[j-1]) * dt + sigma * dW  # Vasicek model equation
+    t[j] <- j * dt  # Time period
+  }
+  plot(t, r, type = "l", col = i, ylim = c(0, 0.1), xlab = "Time", ylab = "Interest Rate", main = "Vasicek Model Simulation")
+  lines(t, rep(b, n), col = "red", lty = 2)  # Long-term average line
+}
+
+```
+
+4.  **Plotting:** Finally, we'll plot the simulated interest rates over time for each simulation. We'll also add a dashed line representing the long-term average interest rate.
+
+5.  **Explanation:** In the Quarto document, you can explain each step in detail:
+
+Parameter Initialization: Describe the significance of each parameter and how they affect the Vasicek model. Arrays Initialization: Explain why we initialize arrays to store interest rates and time periods. Simulation Loop: Describe how the simulation loop works, including the generation of random shocks and updating the interest rate based on the Vasicek model equation. Plotting: Explain the plotted results, such as the behavior of interest rates over time and the concept of mean reversion represented by the long-term average line.
