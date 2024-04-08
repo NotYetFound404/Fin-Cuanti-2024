@@ -61,7 +61,7 @@ a <- 0.1   # Speed of mean reversion
 sigma <- 0.02  # Volatility
 dt <- 1/252  # Time step (assuming daily simulations)
 n <- 252     # Number of time periods (1 year)
-simulations <- 10  # Number of simulations
+simulations <- 1  # Number of simulations
 ```
 
 2.  **Initialize Arrays:** Next, let's initialize empty arrays to store the simulated interest rates (r) and time periods (t).
@@ -149,6 +149,7 @@ rm(list = ls())
 -   Los pasos 1 al 2 pueden son la funcion 'w_setup*'*
 
 ```{r}
+rm(list = ls())
 #originalmente-----------
 # Setup
 set.seed(2024)
@@ -190,6 +191,7 @@ w_setup <- function(n, T, seed.num = 2024) {
   
 }
 w_setup(n = 10, T = 1)
+rm(list = ls())
 ```
 
 ## Base implementation
@@ -233,7 +235,7 @@ ggplot(data = df, aes(x = t, y = W)) +
     x = "Time (years)",
     y = "Brownian motion"
   )
-
+rm(list = ls())
 
 ```
 
@@ -242,33 +244,12 @@ Parametros
 ```{r}
 n <- 10
 T <- 1
-w_setup <- function(n, T, seed.num = 2024) {
-  #setup
-  set.seed(seed.num)
-  n <- n
-  T <- T
-  df <- data.frame(index = seq(1, n+1))
-  # 1st step
-  t <- c(0, sort(runif(n, min = 0, max = T)))
-  W <- numeric(n + 1)
-  W[1] <- 0
-  # 2nd step
-  Z <- rnorm(n)
-  # save to global env
-  assign("df", df, envir = .GlobalEnv)
-  assign("n", n, envir = .GlobalEnv)
-  assign("t", t, envir = .GlobalEnv)
-  assign("T", T, envir = .GlobalEnv)
-  assign("W", W, envir = .GlobalEnv)
-  assign("Z", Z, envir = .GlobalEnv)
-  
-}
-
 ```
 
 ## Using sapply
 
 ```{r}
+source(paste0(getwd(),"/utils.R"))
 # Setup -----------
 w_setup(n = n, T = T)
 # 3rd step
@@ -276,7 +257,7 @@ w_setup(n = n, T = T)
 W <- c(0, sapply(2:(n + 1), function(i) {
   W[i - 1] + sqrt(t[i] - t[i - 1]) * Z[i - 1]
 }))
-W
+#W
 df["W"] <- W
 df["t"] <- t
 # 4th step
@@ -323,6 +304,58 @@ ggplot(data = df, aes(x = t, y = W)) +
 
 # 3. Brownian motion
 
+## Base implementation
+
+```{r}
+
+mu <- 5
+sigma <- 2
+
+X <- mu*t + sigma*W
+
+df["X"] <- X
+
+ggplot(data = df, aes(x = t, y = X)) +
+  geom_step() +
+  labs(
+    title = "Brownian motion path simulation",
+    x = "Time (years)",
+    y = "Stock price"
+  )
+
+```
+
 # 4. Geometric Brownian motion
 
-a
+## Base implementation
+
+```{r}
+w_setup(n = n, T = T)
+
+r <- 0.065
+sigma <- 0.45
+
+S <- numeric(n + 1)
+S[1] <- 100
+
+# 2nd step
+Z <- rnorm(n)
+
+# 3rd step
+for (i in 1:n) {
+  S[i + 1] <- S[i]*exp((r - 0.5*sigma^2)*(t[i + 1] - t[i]) + 
+  sigma*sqrt(t[i + 1] - t[i])*Z[i])
+  
+}
+
+df["S"] <- S
+
+ggplot(data = df, aes(x = t, y = S)) +
+  geom_step() +
+  labs(
+    title = "Geometric Brownian motion path simulation",
+    x = "Time (years)",
+    y = "Stock price"
+  )
+
+```
