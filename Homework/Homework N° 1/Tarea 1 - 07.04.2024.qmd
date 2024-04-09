@@ -304,12 +304,29 @@ ggplot(data = df, aes(x = t, y = W)) +
 
 # 3. Brownian motion
 
-## Base implementation
+Parameters
+
+```{r}
+n <- 100
+T <- 1
+mu <- 5
+sigma <- 2
+
+```
+
+## Sapply implementation
 
 ```{r}
 
-mu <- 5
-sigma <- 2
+source(paste0(getwd(),"/utils.R"))
+w_setup(n = n, T = T)
+
+
+# 3rd step
+#falta explicar porque funciona
+W <- c(0, sapply(2:(n + 1), function(i) {
+  W[i - 1] + sqrt(t[i] - t[i - 1]) * Z[i - 1]
+}))
 
 X <- mu*t + sigma*W
 
@@ -327,19 +344,24 @@ ggplot(data = df, aes(x = t, y = X)) +
 
 # 4. Geometric Brownian motion
 
+Parameters
+
+```{r}
+
+n <- 100
+T <- 1
+
+source(paste0(getwd(),"/utils.R"))
+w_setup(n = n, T = T)
+r <- 0.065
+sigma <- 0.45
+S <- numeric(n + 1)
+S[1] <- 100
+```
+
 ## Base implementation
 
 ```{r}
-w_setup(n = n, T = T)
-
-r <- 0.065
-sigma <- 0.45
-
-S <- numeric(n + 1)
-S[1] <- 100
-
-# 2nd step
-Z <- rnorm(n)
 
 # 3rd step
 for (i in 1:n) {
@@ -347,6 +369,45 @@ for (i in 1:n) {
   sigma*sqrt(t[i + 1] - t[i])*Z[i])
   
 }
+df["S"] <- S
+
+ggplot(data = df, aes(x = t, y = S)) +
+  geom_step() +
+  labs(
+    title = "Geometric Brownian motion path simulation",
+    x = "Time (years)",
+    y = "Stock price"
+  )
+```
+
+## using sapply
+
+Falta corregir implementacion
+
+```{r}
+w_setup(n = n, T = T)
+r <- 0.065
+sigma <- 0.45
+S <- numeric(n + 1)
+S[1] <- 100
+
+# 2nd step
+#Z <- rnorm(n)
+
+# 3rd step
+for (i in 1:n) {
+  S[i + 1] <- S[i]*exp((r - 0.5*sigma^2)*(t[i + 1] - t[i]) +
+  sigma*sqrt(t[i + 1] - t[i])*Z[i])
+
+}
+S
+
+S <- sapply(1:(n), function(i) {
+    S[i + 1] <- S[i]*exp((r - 0.5*sigma^2)*(t[i + 1] - t[i]) + 
+  sigma*sqrt(t[i + 1] - t[i])*Z[i])
+  
+})
+S
 
 df["S"] <- S
 
