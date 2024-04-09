@@ -151,3 +151,4 @@ floop_gbm <- function(n, T, r, sigma, S.1, seed.num = NULL){
 }
 # a <- floop_gbm(n = 10,T = 1,r = 0.065,sigma = 0.45,S.1 = 100)
 # a$p
+#-------------

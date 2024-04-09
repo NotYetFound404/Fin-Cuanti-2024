@@ -50,6 +50,32 @@ Source: [@wiki:vasicek]
 
 For more detail, check @vanAVR
 
+## Base implementation
+
+```{r}
+n <- 10
+m <- 100
+T <- 1
+dt <- T/n
+
+r <- matrix(0, nrow = m, ncol = n+1)
+Z <- matrix(rnorm(m*n), nrow = m, ncol = n)
+t <- numeric(n)
+r[,1] <-  0.0625
+t[1] <- 0
+
+alpha <- 0.4
+b <- 0.04
+sigma <- 0.1
+for(i in 1:n){
+  t[i+1]= t[i]+dt
+  r[, i + 1] <- r[, i] + alpha*(b - r[, i]) + sigma*sqrt(dt)*Z[, i]
+}
+library(MASS)
+matplot(t, t(r), type = "l")
+
+```
+
 ## Implementation 1: Using a *For Loop*
 
 1.  **Initialize Parameters:** First, let's initialize the parameters needed for the model. We'll define b, a, σ, the time step (dt), the number of time periods (n), and the number of simulations (simulations).
