@@ -1,0 +1,32 @@
+---
+title: "Tarea 1"
+bibliography: references.bib
+format: 
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: true
+editor: visual
+theme: cosmo 
+---
+
+# Interest rate model (Vasicek, 1977)
+
+The interest rate is modeled by the following equation:
+
+$$
+\mathrm{d}r_{t} = a(b - r_{t})\,\mathrm{d}t + \sigma\,\mathrm{d}W_{t}
+$$
+
+Source: [@wiki:vasicek]
+
+-   b: Long term mean level
+-   a: Speed of reversion
+-   sigma : instantaneous volatility
+-   Wt: Standard Brownian Motion
+
+For more detail, check @vanAVR
+
+Revisar <https://hannoreuvers.github.io/post/vasicek/>
+
+Tambien <https://quantgirluk.github.io/Understanding-Quantitative-Finance/intro.html>

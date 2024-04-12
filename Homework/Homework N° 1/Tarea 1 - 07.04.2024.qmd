@@ -50,6 +50,10 @@ Source: [@wiki:vasicek]
 
 For more detail, check @vanAVR
 
+Revisar <https://hannoreuvers.github.io/post/vasicek/>
+
+Tambien <https://quantgirluk.github.io/Understanding-Quantitative-Finance/intro.html>
+
 ## Base implementation
 
 ```{r}
@@ -75,6 +79,12 @@ library(MASS)
 matplot(t, t(r), type = "l")
 
 ```
+
+Entiendo que lo anteiror es el proceso, pero esta es la derivacion del modelo (?)\
+
+$$
+r_{t} = r_{0}e^{-at} + b(1-e^{-at}) + \sigma e^{-at} \int_{0}^{t} e^{as} \, dW_{s}.
+$$
 
 ## Implementation 1: Using a *For Loop*
 
@@ -418,29 +428,20 @@ S <- numeric(n + 1)
 S[1] <- 100
 
 # 2nd step
-#Z <- rnorm(n)
+Z <- rnorm(n)
 
-# 3rd step
-for (i in 1:n) {
-  S[i + 1] <- S[i]*exp((r - 0.5*sigma^2)*(t[i + 1] - t[i]) +
-  sigma*sqrt(t[i + 1] - t[i])*Z[i])
-
-}
-S
-
-S <- sapply(1:(n), function(i) {
-    S[i + 1] <- S[i]*exp((r - 0.5*sigma^2)*(t[i + 1] - t[i]) + 
-  sigma*sqrt(t[i + 1] - t[i])*Z[i])
-  
-})
-S
+S <- c(100,sapply(2:(n+1), function(i){
+    S[i] <<- S[i-1]*exp((r - 0.5*sigma^2)*(t[i] - t[i-1]) + 
+  sigma*sqrt(t[i] - t[i-1])*Z[i-1])
+  }
+))
 
 df["S"] <- S
 
 ggplot(data = df, aes(x = t, y = S)) +
   geom_step() +
   labs(
-    title = "Geometric Brownian motion path simulation",
+    title = "Geometric Brownian motion path simulation (sapply)",
     x = "Time (years)",
     y = "Stock price"
   )
