@@ -195,6 +195,7 @@ sapply_gbm <- function(n, T, r, sigma, S.1, seed.num = NULL){
   return(output)
   
 }
+a <- sapply_gbm(n = 10,T = 1,r = 0.1,sigma = 2,S.1 = 10,seed.num = 2024)
 #-------------------
 # Define a function for simulating the Vasicek model
 simulate_vasicek <- function(n, m, T, alpha, b, sigma) {
@@ -358,3 +359,96 @@ sapply_sbm_mtx <- function(m, n, T, seed.num = NULL){
 # n = 10; T = 1; m = 2; set.seed(2024)
 # a <- sapply_sbm_mtx(n = 10, T = 1, m = 10)
 # a$p
+#-----------
+sapply_bm_mtx <- function(m, mu, n, T, seed.num = NULL){
+  #safe-check................
+  if (!is.null(seed.num)) {
+    set.seed(seed.num)
+  }
+  #setup......................
+  n <- n
+  T <- T
+  m <- m
+  mu <- mu
+  
+  # 1st step
+  t <- c(0, sort(runif(n, min = 0, max = T)))
+  W <- matrix(numeric(), nrow = m, ncol = n + 1)
+  X <- matrix(numeric(), nrow = m, ncol = n + 1)
+  W[,1] <- 0
+  
+  # 2nd step
+  Z <- matrix(rnorm(m * n), nrow = m, ncol = n)
+  
+  #..............................
+  # Simulate Brownian motion using a for loop
+  sapply(2:(n + 1), function(i) {
+    W[,i] <<- W[, i - 1] + sqrt(t[i] - t[i - 1]) * Z[, i - 1]
+  })
+  
+  X <- t(mu*t + t(sigma*W))
+  
+  
+  
+  #add w to the dataframe
+  df <- as.data.frame(X) |>
+    setNames(t) |>
+    mutate(Path = row_number()) |>
+    pivot_longer(cols = -Path, names_to = "Time", values_to = "X")
+  
+  # 4th step
+  p <- ggplot(df, aes(x = Time, y = X, group = Path, color = factor(Path))) +
+    geom_line(alpha = 0.5) +
+    labs(x = "Time", y = "dW", title = "Brownian Motion", color = "Path Number") +
+    theme_minimal()
+  
+  output <- list(n = n, T = T, df = df, t = t, W = W, Z = Z, p = p)
+  return(output)
+}
+# n = 10; T = 1; m = 2; set.seed(2024);sigma = 2;mu = 5
+# a <- sapply_sbm_mtx(n = 10, T = 1, m = 10, mu = 5)
+# a$p
+#----------
+sapply_gbm_mtx <- function(m, n, T, r, sigma, S.1, seed.num = NULL){
+  #safe-check................
+  if (!is.null(seed.num)) {
+    set.seed(seed.num)
+  }
+  #setup......................
+  n <- n
+  T <- T
+  r <- r
+  sigma <- sigma
+  # 1st step
+  t <- c(0, sort(runif(n, min = 0, max = T)))
+  S <- matrix(numeric(), nrow = m, ncol = n + 1)
+  S[,1] <- S.1
+  # 2nd step
+  Z <- matrix(rnorm(m * n), nrow = m, ncol = n)
+  
+  #..............................
+  # Simulate Brownian motion using a for loop
+  sapply(2:(n + 1), function(i) {
+    S[,i] <<- S[,i-1]*exp((r - 0.5*sigma^2)*(t[i] - t[i-1]) +
+                            sigma*sqrt(t[i] - t[i-1])*Z[,i-1])
+    
+  })
+  #add w to the dataframe
+  df <- as.data.frame(S) |>
+    setNames(t) |>
+    mutate(Path = row_number()) |>
+    pivot_longer(cols = -Path, names_to = "Time", values_to = "S")
+  
+  # 4th step
+  p <- ggplot(df, aes(x = Time, y = S, group = Path, color = factor(Path))) +
+    geom_line(alpha = 0.5) +
+    labs(x = "Time", y = "dW", title = "Brownian Motion", color = "Path Number") +
+    theme_minimal()
+  
+  output <- list(n = n, T = T, df = df, t = t, Z = Z, p = p)
+  return(output)
+}
+
+a <- sapply_gbm_mtx(m = 10, n = 12,T = 1,r = 0.1,sigma = 2,S.1 = 10)
+a$p
+

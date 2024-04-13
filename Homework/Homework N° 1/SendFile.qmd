@@ -1,0 +1,643 @@
+---
+title: "Stochastic Processes: Vasicek Model & Brownian Motion"
+bibliography: references.bib
+author: 
+  - name: Cesar Garcia Asto
+  - name: Pepito Perez
+format: 
+  html:
+    toc: true
+    toc_depth: 6
+    embed-resources: true
+    code-fold: true
+    error: false
+    warning: false
+    code-tools: true
+    code-copy: true
+editor: visual
+output: asis
+theme: cosmo 
+---
+
+# Guidelines
+
+1.  Simulate the Vasicek model to analyze interest rate movements.
+
+2.  Study previous simulations and endeavor to implement them using your own approach.
+
+3.  Explore the following stochastic processes:
+
+    -   Standard Brownian Motion
+
+    -   Brownian Motion
+
+    -   Geometric Brownian Motion
+
+Additionally:
+
+-   Provide detailed explanations for each segment of the code to enhance understanding.
+
+-   Employ the stochastic equation governing the Vasicek model to ensure accuracy.
+
+-   Consider the following implementation strategies:
+
+    -   Utilizing **`replicate`** for efficient code replication.
+
+    -   Leveraging **`sapply`** for streamlined iterative operations.
+
+    -   Implementing a matrix-based approach devoid of loops, **`sapply`**, or **`replicate`** for optimized performance.
+
+# Vasicek Model
+
+## Overview
+
+The Vasicek model presents the interest rate dynamics through the differential equation:
+
+$$
+\frac{\mathrm{d}r_{t}}{\mathrm{d}t} = a(b - r_{t}) + \sigma\,\mathrm{d}W_{t}
+$$
+
+-   $b$: Long term mean level
+-   $a$: Speed of reversion
+-   $\sigma$ : instantaneous volatility
+
+Reference: [@wiki:vasicek]
+
+This document covers simulating the Vasicek model and its statistical analysis within a Shiny R app. We'll focus on explaining the key functions: 'simulate_vasicek' and 'calculate_vasicek'.
+
+## R Implementation
+
+The **`simulate_vasicek`** function is designed to simulate interest rate paths using the Vasicek model. Below are the details of the function's parameters and their roles:
+
+-   **`r.1`**: Initial interest rate value at time 0.
+
+-   **`n`**: Number of time steps to simulate.
+
+-   **`m`**: Number of simulations (paths) to generate.
+
+-   **`T`**: Time horizon (in years) for the simulation.
+
+-   **`alpha`**: Speed of reversion parameter in the Vasicek model.
+
+-   **`b`**: Long-term mean level parameter in the Vasicek model.
+
+-   **`sigma`**: Instantaneous volatility parameter in the Vasicek model.
+
+-   **`seed.num`**: Optional parameter for setting the seed for reproducibility. If provided, the random number generator will be initialized with this seed.
+
+Key points about the function:
+
+-   The function initializes necessary libraries such as **`MASS`**, **`dplyr`**, and **`tidyverse`**.
+
+-   It calculates the time step **`dt`** based on the time horizon **`T`** and the number of time steps **`n`**.
+
+-   Matrices are initialized to store interest rates (**`r`**) and random variables (**`Z`**).
+
+-   Interest rate paths are simulated using the Vasicek model with the specified parameters.
+
+-   The resulting data is converted to a data frame for visualization using **`ggplot2`**.
+
+-   The function returns a list containing the simulated interest rate paths (**`r`**), the time steps (**`t`**), a ggplot object for visualization (**`p`**), and the data frame of interest rates (**`df`**).
+
+## Code
+
+```{r}
+simulate_vasicek <- function(r.1, n, m, T, alpha, b, sigma, seed.num = NULL) {
+  
+  #For reproductibility
+  if (!is.null(seed.num)) {
+    set.seed(seed.num)
+  }
+  
+  
+  # Load necessary libraries
+  library(MASS)
+  library(dplyr)
+  library(tidyverse)
+  
+  
+  # Calculate time step (discrete)
+  dt <- T / n
+  
+  # Initialize matrices for interest rates and random variables
+  r <- matrix(0, nrow = m, ncol = n + 1)
+  Z <- matrix(rnorm(m * n), nrow = m, ncol = n)
+  t <- numeric(n)
+  r[, 1] <- r.1
+  t[1] <- 0
+  
+  # Simulate interest rate paths using Vasicek model
+  for (i in 1:n) {
+    t[i + 1] = t[i] + dt
+    r[, i + 1] <- r[, i] + alpha * (b - r[, i]) + sigma * sqrt(dt) * Z[, i]
+  }
+  
+  # Convert the data to a data frame for ggplot
+  df <- as.data.frame(r) |>
+    setNames(t) |>
+    mutate(Path = row_number()) |>
+    pivot_longer(cols = -Path, names_to = "Time", values_to = "Interest_Rate")
+  
+  # Create the plot using ggplot2
+  p <- ggplot(df, aes(x = Time, y = Interest_Rate, group = Path, color = factor(Path))) +
+    geom_line(alpha = 0.5) +
+    labs(x = "Time", y = "Interest Rates", title = "Simulated Interest Rate Paths", color = "Path Number") +
+    theme_minimal()
+  
+  # Return the simulated interest rate paths
+  return(list(t = t, r = r, p = p, df = df))
+}
+```
+
+## Sample simulation
+
+```{r}
+simulate_vasicek(r.1 = 0.0625,n = 10,m = 2,T = 1,alpha = 0.1,b = 0.4,sigma = 1)
+```
+
+## Helper vasicek function
+
+```{r}
+calculate_stats_vasicek <- function(df) {
+  # Calculate mean, variance, and other statistics
+  stats <- df %>%
+    group_by(Path) %>%
+    summarise(
+      Mean = mean(Interest_Rate),
+      Variance = var(Interest_Rate),
+      SD = sd(Interest_Rate),
+      Min = min(Interest_Rate),
+      Max = max(Interest_Rate),
+      Q1 = quantile(Interest_Rate, 0.25),
+      Median = median(Interest_Rate),
+      Q3 = quantile(Interest_Rate, 0.75)
+    )
+  
+  # Create a histogram of interest rates
+  hist_plot <- ggplot(df, aes(x = Interest_Rate)) +
+    geom_histogram(binwidth = 0.02, fill = "skyblue", color = "black") +
+    labs(x = "Interest Rate", y = "Frequency", title = "Distribution of Interest Rates")
+  
+  # Return the calculated statistics and histogram plot
+  return(list(stats = stats, hist_plot = hist_plot))
+}
+```
+
+# Stochastic Processes
+
+Brownian motion and its variants, standard Brownian motion and geometric Brownian motion, are foundational concepts in stochastic processes. They represent the inherent randomness observed in various natural and financial systems, making them crucial models for understanding complex dynamics.
+
+In this exploration, we delve into the mathematical formulations of these stochastic processes, focusing on their stochastic differential equations. We'll showcase implementations using both traditional for loops and streamlined vectorized approaches like **`sapply`**, along with a matrix-based simulation for handling multiple paths efficiently.
+
+Through this journey, we aim to demystify these fundamental concepts, highlighting their computational aspects and practical significance in stochastic modeling.
+
+## Standard Brownian Motion
+
+Standard Brownian Motion (SBM) is a fundamental stochastic process used to model random fluctuations over time. Its continuous-time nature and independent, normally distributed increments make it a versatile tool in various fields, including finance, physics, and engineering.
+
+In the upcoming subsections, we will delve into the practical aspects of simulating Standard Brownian Motion (SBM) using 3 different computational techniques. First, we will explore the base implementation utilizing a for loop, providing a foundational understanding of the simulation process. Then, we will introduce the **`sapply`** function to streamline the simulation code and enhance efficiency. Finally, we will discuss a matrix-based approach for simulating multiple paths of SBM simultaneously, offering scalability and performance improvements. Through these sections, we aim to provide a comprehensive overview of SBM simulation methods, catering to diverse computational needs and preferences.
+
+### Overview
+
+SBM starts with an original value $W_{t_0}$ tat evolves over time. The change in the Brownian Motion at each steps is drawn from a standard normal distribution with mean($\mu$) 0 and sd ($\sigma$) = 1, which is scaled by the square root of the time increment ($\sqrt{t-t_{0}}$)
+
+$$
+W_{i+1} = W_i + \sqrt{t_{i+1} - t_i} \cdot Z_i
+$$
+
+Where:
+
+-   $W_{i+1}$ represents value W at time i+1
+
+-   $W_{i}$ represents value W at time i
+
+-   $t_{i+1}$ and $t_{i}$ represents value time periods
+
+-   $Z_{i}$ represents a random variable at time T
+
+### Using a For loop
+
+#### floop implementation
+
+The **`floop_sbm`** function is designed to simulate a single standard brownian motion path using a for loop. Below are the details of the function's parameters and their roles:
+
+**Parameters:**
+
+-   **`n`**: The number of time steps to simulate.
+
+-   **`T`**: The time horizon (in years).
+
+-   **`seed`**: Optional. Seed for reproducibility of random numbers.
+
+Key points about the function: \#### floop code
+
+```{r}
+floop_sbm <- function(n, T, seed = NULL) {
+  # Libraries
+  library(ggplot2)
+  
+  # Set seed for reproducibility
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
+  
+  # Initialize data frame
+  df <- data.frame(index = seq(1, n+1))
+  
+  # Generate random time points
+  t <- sort(runif(n, min = 0, max = T))
+  t <- c(0, t)
+  
+  # Initialize W vector
+  W <- numeric(n + 1)
+  W[1] <- 0 #cero as starting value
+  
+  # Generate random normal variables
+  Z <- rnorm(n)
+  
+  # Simulate Brownian motion
+  for (i in 1:n) {
+    W[i + 1] <- W[i] + sqrt(t[i + 1] - t[i]) * Z[i]
+  }
+  
+  # Add time and Brownian motion values to data frame
+  df["t"] <- t
+  df["W"] <- W
+  
+  # Plot Brownian motion
+  p <- ggplot(data = df, aes(x = t, y = W)) +
+    geom_step() +
+    labs(
+      title = "Standard Brownian motion path simulation",
+      x = "Time (years)",
+      y = "Brownian motion"
+    )
+  
+  output <- list(n = n, T = T, df = df, t = t, W = W, Z = Z, p = p)
+  return(output)
+}
+```
+
+#### floop sample
+
+```{r}
+floop_sbm(n = 10,T = 1,seed = 2024)
+```
+
+### Using a sapply
+
+a
+
+#### sapply implementation
+
+#### sapply code
+
+```{r}
+sapply_sbm <- function(n, T, seed.num = NULL){
+  #safe-check................
+  if (!is.null(seed.num)) {
+    set.seed(seed.num)
+  }
+  #setup......................
+  n <- n
+  T <- T
+  df <- data.frame(index = seq(1, n+1))
+  # 1st step
+  t <- c(0, sort(runif(n, min = 0, max = T)))
+  W <- numeric(n + 1)
+  W[1] <- 0
+  # 2nd step
+  Z <- rnorm(n)
+  
+  #..............................
+  W <- c(0, sapply(2:(n + 1), function(i) {
+    W[i - 1] + sqrt(t[i] - t[i - 1]) * Z[i - 1]
+  }))
+  #W
+  df["W"] <- W
+  df["t"] <- t
+  
+  # 4th step
+  p <- ggplot(data = df, aes(x = t, y = W)) +
+    geom_step() +
+    labs(
+      title = "Standard Brownian motion path simulation (sapply)",
+      x = "Time (years)",
+      y = "Brownian motion"
+    )
+  
+  output <- list(n = n, T = T, df = df, t = t, W = W, Z = Z, p = p)
+  return(output)
+}
+```
+
+#### sapply sample
+
+```{r}
+sapply_sbm(n = 10,T = 1,seed.num = 2024)
+```
+
+### Using a matrix
+
+#### matrix implementation
+
+#### matrix code
+
+```{r}
+sapply_sbm_mtx <- function(m, n, T, seed.num = NULL){
+  #safe-check................
+  if (!is.null(seed.num)) {
+    set.seed(seed.num)
+  }
+  #setup......................
+  n <- n
+  T <- T
+  m <- m
+  
+  # 1st step
+  t <- c(0, sort(runif(n, min = 0, max = T)))
+  W <- matrix(numeric(), nrow = m, ncol = n + 1)
+  W[,1] <- 0
+  
+  # 2nd step
+  Z <- matrix(rnorm(m * n), nrow = m, ncol = n)
+  
+  #..............................
+  # Simulate Brownian motion using a for loop
+  sapply(2:(n + 1), function(i) {
+    W[,i] <<- W[, i - 1] + sqrt(t[i] - t[i - 1]) * Z[, i - 1]
+  })
+  
+  
+  #add w to the dataframe
+  df <- as.data.frame(W) |>
+    setNames(t) |>
+    mutate(Path = row_number()) |>
+    pivot_longer(cols = -Path, names_to = "Time", values_to = "W")
+  
+  # 4th step
+  p <- ggplot(df, aes(x = Time, y = W, group = Path, color = factor(Path))) +
+    geom_line(alpha = 0.5) +
+    labs(x = "Time", y = "dW", title = "Brownian Motion", color = "Path Number") +
+    theme_minimal()
+  
+  output <- list(n = n, T = T, df = df, t = t, W = W, Z = Z, p = p)
+  return(output)
+}
+```
+
+#### matrix sample
+
+```{r}
+sapply_sbm_mtx(n = 10, T = 1, m = 10)
+```
+
+## Brownian Motion
+
+Similar a standard brownian motion pero no se asume que sigue una normal estandar solo una normal
+
+### Overview
+
+Aqui algo de texto Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed
+
+### Using a For Loop
+
+Falta agregar Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed
+
+### Using sapply
+
+Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed
+
+#### sapply code
+
+```{r}
+sapply_bm <- function(n, T, mu, sigma, seed.num = NULL){
+  
+  #safe-check................
+  if (!is.null(seed.num)) {
+    set.seed(seed.num)
+  }
+  #setup......................
+  n <- n
+  T <- T
+  df <- data.frame(index = seq(1, n+1))
+  # 1st step
+  t <- c(0, sort(runif(n, min = 0, max = T)))
+  W <- numeric(n + 1)
+  W[1] <- 0
+  # 2nd step
+  Z <- rnorm(n)
+  
+  #..............................
+  W <- c(0, sapply(2:(n + 1), function(i) {
+    W[i - 1] + sqrt(t[i] - t[i - 1]) * Z[i - 1]
+  }))
+  
+  X <- mu*t + sigma*W
+  
+  
+  df["W"] <- W
+  df["t"] <- t
+  df["X"] <- X
+  
+  # 4th step
+  p <- ggplot(data = df, aes(x = t, y = X)) +
+    geom_step() +
+    labs(
+      title = "Brownian motion path simulation (sapply)",
+      x = "Time (years)",
+      y = "Stock price"
+    )
+  
+  output <- list(n = n, T = T, df = df, t = t, W = W, Z = Z, X = X, p = p)
+  return(output)
+  
+}
+```
+
+#### sapply sample
+
+```{r}
+sapply_bm(n = 10, T = 1,mu = 5,sigma = 2,seed.num = 2024)
+```
+
+### Using matrix
+
+#### matrix code
+
+```{r}
+sapply_bm_mtx <- function(m, mu, n, T, seed.num = NULL){
+  #safe-check................
+  if (!is.null(seed.num)) {
+    set.seed(seed.num)
+  }
+  #setup......................
+  n <- n
+  T <- T
+  m <- m
+  mu <- mu
+  
+  # 1st step
+  t <- c(0, sort(runif(n, min = 0, max = T)))
+  W <- matrix(numeric(), nrow = m, ncol = n + 1)
+  X <- matrix(numeric(), nrow = m, ncol = n + 1)
+  W[,1] <- 0
+  
+  # 2nd step
+  Z <- matrix(rnorm(m * n), nrow = m, ncol = n)
+  
+  #..............................
+  # Simulate Brownian motion using a for loop
+  sapply(2:(n + 1), function(i) {
+    W[,i] <<- W[, i - 1] + sqrt(t[i] - t[i - 1]) * Z[, i - 1]
+  })
+  
+  X <- t(mu*t + t(sigma*W))
+  
+  
+  
+  #add w to the dataframe
+  df <- as.data.frame(X) |>
+    setNames(t) |>
+    mutate(Path = row_number()) |>
+    pivot_longer(cols = -Path, names_to = "Time", values_to = "X")
+  
+  # 4th step
+  p <- ggplot(df, aes(x = Time, y = X, group = Path, color = factor(Path))) +
+    geom_line(alpha = 0.5) +
+    labs(x = "Time", y = "dW", title = "Brownian Motion", color = "Path Number") +
+    theme_minimal()
+  
+  output <- list(n = n, T = T, df = df, t = t, W = W, Z = Z, p = p)
+  return(output)
+}
+```
+
+#### matrix sample
+
+```{r}
+sapply_sbm_mtx(n = 10, T = 1, m = 10)
+```
+
+## Geometric Brownian Motion
+
+Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed 
+
+### Overview
+
+Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed 
+
+### Using For loop
+
+Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed 
+
+### Using sapply
+
+Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed 
+
+#### sapply code
+
+```{r}
+sapply_gbm <- function(n, T, r, sigma, S.1, seed.num = NULL){
+  
+  #safe-check................
+  if (!is.null(seed.num)) {
+    set.seed(seed.num)
+  }
+  #setup......................
+  n <- n
+  T <- T
+  df <- data.frame(index = seq(1, n+1))
+  # 1st step
+  t <- c(0, sort(runif(n, min = 0, max = T)))
+  W <- numeric(n + 1)
+  W[1] <- 0
+  S <- numeric(n + 1)
+  S[1] <- S.1
+  # 2nd step
+  Z <- rnorm(n)
+  
+  #..............................
+  # 3rd step
+  S <- c(S.1,sapply(2:(n+1), function(i){
+    S[i] <<- S[i-1]*exp((r - 0.5*sigma^2)*(t[i] - t[i-1]) + 
+                          sigma*sqrt(t[i] - t[i-1])*Z[i-1])
+  }
+  ))
+  
+  df["S"] <- S
+  df["W"] <- W
+  df["t"] <- t
+  
+  # 4th step
+  p <- ggplot(data = df, aes(x = t, y = S)) +
+    geom_step() +
+    labs(
+      title = "Geometric Brownian motion path simulation (sapply)",
+      x = "Time (years)",
+      y = "Stock price"
+    )
+  
+  output <- list(n = n, T = T, df = df, t = t, W = W, Z = Z, S = S, p = p)
+  return(output)
+  
+}
+```
+
+#### sapply sample
+
+```{r}
+sapply_gbm(n = 10,T = 1,r = 0.1,sigma = 2,S.1 = 10,seed.num = 2024)
+```
+
+### Using matrix
+
+#### matrix code
+
+```{r}
+sapply_gbm_mtx <- function(m, n, T, r, sigma, S.1, seed.num = NULL){
+  #safe-check................
+  if (!is.null(seed.num)) {
+    set.seed(seed.num)
+  }
+  #setup......................
+  n <- n
+  T <- T
+  r <- r
+  sigma <- sigma
+  # 1st step
+  t <- c(0, sort(runif(n, min = 0, max = T)))
+  S <- matrix(numeric(), nrow = m, ncol = n + 1)
+  S[,1] <- S.1
+  # 2nd step
+  Z <- matrix(rnorm(m * n), nrow = m, ncol = n)
+  
+  #..............................
+  # Simulate Brownian motion using a for loop
+  sapply(2:(n + 1), function(i) {
+    S[,i] <<- S[,i-1]*exp((r - 0.5*sigma^2)*(t[i] - t[i-1]) +
+                            sigma*sqrt(t[i] - t[i-1])*Z[,i-1])
+    
+  })
+  #add w to the dataframe
+  df <- as.data.frame(S) |>
+    setNames(t) |>
+    mutate(Path = row_number()) |>
+    pivot_longer(cols = -Path, names_to = "Time", values_to = "S")
+  
+  # 4th step
+  p <- ggplot(df, aes(x = Time, y = S, group = Path, color = factor(Path))) +
+    geom_line(alpha = 0.5) +
+    labs(x = "Time", y = "dW", title = "Brownian Motion", color = "Path Number") +
+    theme_minimal()
+  
+  output <- list(n = n, T = T, df = df, t = t, Z = Z, p = p)
+  return(output)
+}
+```
+
+#### matrix sample
+
+```{r}
+sapply_gbm_mtx(m = 10, n = 12,T = 1,r = 0.1,sigma = 2,S.1 = 10)
+```
