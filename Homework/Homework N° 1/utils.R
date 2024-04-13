@@ -270,3 +270,91 @@ calculate_stats_vasicek <- function(df) {
 # a <- calculate_stats_vasicek(vasicek_simulation$df)
 # a$stats
 # a$hist_plot
+#------------
+floop_sbm_mtx <- function(m, n, T, seed.num = NULL){
+  #safe-check................
+  if (!is.null(seed.num)) {
+    set.seed(seed.num)
+  }
+  #setup......................
+  n <- n
+  T <- T
+  m <- m
+  
+  # 1st step
+  t <- c(0, sort(runif(n, min = 0, max = T)))
+  W <- matrix(numeric(), nrow = m, ncol = n + 1)
+  W[,1] <- 0
+  
+  # 2nd step
+  Z <- matrix(rnorm(m * n), nrow = m, ncol = n)
+  
+  #..............................
+  # Simulate Brownian motion using a for loop
+  for (i in 2:(n + 1)) {
+    W[, i] <- W[, i - 1] + sqrt(t[i] - t[i - 1]) * Z[, i - 1]
+  }
+  
+  #add w to the dataframe
+  df <- as.data.frame(W) |>
+    setNames(t) |>
+    mutate(Path = row_number()) |>
+    pivot_longer(cols = -Path, names_to = "Time", values_to = "W")
+  
+  # 4th step
+  p <- ggplot(df, aes(x = Time, y = W, group = Path, color = factor(Path))) +
+    geom_line(alpha = 0.5) +
+    labs(x = "Time", y = "dW", title = "Brownian Motion", color = "Path Number") +
+    theme_minimal()
+  
+  output <- list(n = n, T = T, df = df, t = t, W = W, Z = Z, p = p)
+  return(output)
+}
+# n = 10; T = 1; m = 2
+# a <- floop_sbm_mtx(n = 10, T = 1, m = 10)
+# a$p
+
+#-------------------
+sapply_sbm_mtx <- function(m, n, T, seed.num = NULL){
+  #safe-check................
+  if (!is.null(seed.num)) {
+    set.seed(seed.num)
+  }
+  #setup......................
+  n <- n
+  T <- T
+  m <- m
+  
+  # 1st step
+  t <- c(0, sort(runif(n, min = 0, max = T)))
+  W <- matrix(numeric(), nrow = m, ncol = n + 1)
+  W[,1] <- 0
+  
+  # 2nd step
+  Z <- matrix(rnorm(m * n), nrow = m, ncol = n)
+  
+  #..............................
+  # Simulate Brownian motion using a for loop
+  sapply(2:(n + 1), function(i) {
+    W[,i] <<- W[, i - 1] + sqrt(t[i] - t[i - 1]) * Z[, i - 1]
+  })
+  
+  
+  #add w to the dataframe
+  df <- as.data.frame(W) |>
+    setNames(t) |>
+    mutate(Path = row_number()) |>
+    pivot_longer(cols = -Path, names_to = "Time", values_to = "W")
+  
+  # 4th step
+  p <- ggplot(df, aes(x = Time, y = W, group = Path, color = factor(Path))) +
+    geom_line(alpha = 0.5) +
+    labs(x = "Time", y = "dW", title = "Brownian Motion", color = "Path Number") +
+    theme_minimal()
+  
+  output <- list(n = n, T = T, df = df, t = t, W = W, Z = Z, p = p)
+  return(output)
+}
+# n = 10; T = 1; m = 2; set.seed(2024)
+# a <- sapply_sbm_mtx(n = 10, T = 1, m = 10)
+# a$p
