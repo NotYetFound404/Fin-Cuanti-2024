@@ -2,6 +2,9 @@ library(shiny)
 library(ggplot2)
 library(tidyverse)
 source(paste0(getwd(),"/utils.R"))
+#Must change working directory to stochastic-modelling in order to run the shiny app
+
+
 function(input, output, session) {
   observeEvent(input$run_sbm, {
     plot_data <- sapply_sbm(input$n_sbm, input$T_sbm)
