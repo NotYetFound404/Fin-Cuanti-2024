@@ -1,5 +1,7 @@
 library(shiny)
-source("C:/Users/RYZEN7/Desktop/Fin-Cuanti-2024/Homework/Homework N° 1/utils.R")
+library(ggplot2)
+library(tidyverse)
+source(paste0(getwd(),"/utils.R"))
 function(input, output, session) {
   observeEvent(input$run_sbm, {
     plot_data <- sapply_sbm(input$n_sbm, input$T_sbm)

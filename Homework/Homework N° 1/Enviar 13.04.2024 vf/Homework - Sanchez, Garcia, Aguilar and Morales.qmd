@@ -2,8 +2,10 @@
 title: "Stochastic Processes: Vasicek Model & Brownian Motion"
 bibliography: references.bib
 author: 
-  - name: Cesar Garcia Asto
-  - name: Pepito Perez
+  - name: Alicia Sanchez Alberca
+  - name: César García Asto
+  - name: Daniel Aguilar Paucar
+  - name: Giuliano Morales Moreyra
 format: 
   html:
     toc: true
@@ -229,7 +231,9 @@ The **`floop_sbm`** function is designed to simulate a single standard brownian 
 
 -   **`seed`**: Optional. Seed for reproducibility of random numbers.
 
-Key points about the function: \#### floop code
+Key points about the function:
+
+#### floop code
 
 ```{r}
 floop_sbm <- function(n, T, seed = NULL) {
@@ -285,10 +289,6 @@ floop_sbm(n = 10,T = 1,seed = 2024)
 ```
 
 ### Using a sapply
-
-a
-
-#### sapply implementation
 
 #### sapply code
 
@@ -394,19 +394,7 @@ sapply_sbm_mtx(n = 10, T = 1, m = 10)
 
 ## Brownian Motion
 
-Similar a standard brownian motion pero no se asume que sigue una normal estandar solo una normal
-
-### Overview
-
-Aqui algo de texto Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed
-
-### Using a For Loop
-
-Falta agregar Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed
-
 ### Using sapply
-
-Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed
 
 #### sapply code
 
@@ -521,19 +509,7 @@ sapply_sbm_mtx(n = 10, T = 1, m = 10)
 
 ## Geometric Brownian Motion
 
-Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed 
-
-### Overview
-
-Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed 
-
-### Using For loop
-
-Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed 
-
 ### Using sapply
-
-Minus repudiandae dolores debitis veritatis id est facere. Et aut cum tempora cum qui dolorum explicabo nulla. Culpa magnam accusantium sed 
 
 #### sapply code
 
