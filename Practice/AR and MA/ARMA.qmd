@@ -1,0 +1,238 @@
+---
+title: "AR and MA processes"
+bibliography: references.bib
+author: 
+  - name: Alicia Sanchez Alberca
+  - name: César García Asto
+  - name: Daniel Aguilar Paucar
+  - name: Giuliano Morales Moreyra
+format: 
+  html:
+    toc: true
+    toc_depth: 6
+    embed-resources: true
+    code-fold: true
+    error: false
+    warning: false
+    code-tools: true
+    code-copy: true
+editor: visual
+output: asis
+theme: cosmo 
+---
+
+# Stationarity
+
+According to @hamilton_tsa
+
+A process can be strictly stationary or weakly stationarity (@schrimpf2007time,)
+
+**Strictly Stationarity**
+
+"A process, $\{yt\}$, is strictly stationary if for each k, t and n, the distribution of \${yt, ..., yt+k}\$ is the same as the distribution of \${yt+n, ..., yt+k+n}\$"
+
+Suppose our sequence is:
+
+$$
+\{ y_0, y_1, y_2, y_3, y_4, y_5, y_6, y_7, y_8, y_9, y_{10} \}
+$$
+
+Now, let's take a chunk of this sequence, say,
+
+$$
+{ y_2, y_3, y_4, y_5 }
+$$
+
+According to strict stationarity, if we move this chunk forward by a fixed amount, say, 3 positions, we should get the same distribution. Let's check that by looking at the chunk from $y_5$ to $y_8$
+
+**Weakly Stationarity**
+
+## AR(1)
+
+Using already made functions:
+
+```{r}
+# Set the parameters for the AR(1) process
+phi <- 0.7  # Autoregressive coefficient
+n <- 1000    # Number of observations to generate
+# Generate the AR(1) process
+ar1_data <- stats::arima.sim(model = list(ar = phi), n = n)
+
+# Plot the generated AR(1) process
+plot(ar1_data, type = 'l', main = 'AR(1) Process', ylab = 'Value', xlab = 'Time')
+
+```
+
+The AR(1) process is defined as: $$
+ X_t = \phi X_{t-1} + \varepsilon_t
+$$
+
+where:
+
+-    $( X_t )$ is the current value of the AR(1) process,
+
+-    $( \phi )$ is the autoregressive coefficient,
+
+-   $( X_{t-1} )$ is the previous value of the process, and
+
+-   $( \varepsilon_t )$ is a white noise at time ( $t$ ).
+
+```{r}
+phi <- 0.7  # Autoregressive coefficient
+sigma <- 1  # Standard deviation of the random error
+n = 100
+generate_AR1 <- function(phi, sigma, n) {
+  # Initialize an empty vector to store the generated values
+  ar1_data <- numeric(n+1)
+  epsilon <- rnorm(n,sd = sigma)
+  
+  for(i in (1:n)){
+    ar1_data[i+1] <- phi*ar1_data[i] + epsilon[i]
+  }
+  
+  # Return the generated AR(1) process
+  return(ar1_data)
+}
+ar1_data_custom <- generate_AR1(phi, sigma, n)
+#..........
+library(ggplot2)
+# Create a data frame for ggplot
+ar1_df <- data.frame(Time = 1:(n+1), Value = ar1_data_custom)
+
+# Plot using ggplot
+ggplot(ar1_df, aes(x = Time, y = Value)) +
+  geom_line() +
+  labs(title = "AR(1) Process",
+       x = "Time",
+       y = "Value")
+```
+
+AR(2) with built in function
+
+```{r}
+# Load the stats package (if not already loaded)
+library(stats)
+
+# Set the parameters for the AR(2) process
+phi1 <- 0.5  # Autoregressive coefficient for lag 1
+phi2 <- -0.3  # Autoregressive coefficient for lag 2
+n <- 1000    # Number of observations to generate
+
+# Generate the AR(2) process
+ar2_data <- arima.sim(model = list(ar = c(phi1, phi2)), n = n)
+
+# Plot the generated AR(2) process
+plot(ar2_data, type = 'l', main = 'AR(2) Process', ylab = 'Value', xlab = 'Time')
+
+```
+
+AR(2) function process\
+
+```{r}
+phi1 <- 0.7  # Autoregressive coefficient for lag 1
+phi2 <- -0.3  # Autoregressive coefficient for lag 2
+sigma <- 1  # Standard deviation of the random error
+n <- 100  # Number of observations
+
+generate_AR2 <- function(phi1, phi2, sigma, n) {
+  # Initialize an empty vector to store the generated values
+  ar2_data <- numeric(n+2)
+  epsilon <- rnorm(n, sd = sigma)
+  
+  for (i in 3:(n+2)) {
+    ar2_data[i] <- phi1 * ar2_data[i-1] + phi2 * ar2_data[i-2] + epsilon[i-2]
+  }
+  
+  # Return the generated AR(2) process
+  return(ar2_data)
+}
+
+# Generate the AR(2) process using the custom function
+ar2_data_custom <- generate_AR2(phi1, phi2, sigma, n)
+
+# Plot the generated AR(2) process
+plot(ar2_data_custom, type = 'l', main = 'AR(2) Process', ylab = 'Value', xlab = 'Time')
+
+```
+
+Custom AR(p) function
+
+```{r}
+generate_ARp <- function(phi_list, sigma, n) {
+  p <- length(phi_list)  # Number of autoregressive coefficients
+  ar_data <- numeric(n + p)  # Initialize vector to store generated values
+  epsilon <- rnorm(n, sd = sigma)  # Generate random errors
+  
+  # Fill in initial values using random errors
+  ar_data[1:p] <- epsilon[1:p]
+  
+  # Generate AR(p) process
+  for (i in (p + 1):(n + p)) {
+    ar_data[i] <- sum(phi_list * ar_data[(i - p):(i - 1)]) + epsilon[i - p]
+  }
+  
+  # Return the generated AR(p) process
+  return(ar_data[(p + 1):(n + p)])
+}
+
+# Example usage:
+phi_list <- c(0.7, -0.4, 0.2)  # Autoregressive coefficients
+sigma <- 1  # Standard deviation of the random error
+n <- 100  # Number of observations
+
+# Generate the AR(p) process using the custom function
+ar_data_custom <- generate_ARp(phi_list, sigma, n)
+
+# Plot the generated AR(p) process
+plot(ar_data_custom, type = 'l', main = 'AR(p) Process', ylab = 'Value', xlab = 'Time')
+
+
+```
+
+Implementation using recursion\
+
+```{r}
+generate_ARp_recursive <- function(phi_list, sigma, n) {
+  p <- length(phi_list)  # Number of autoregressive coefficients
+  
+  # Initialize AR(p) data vector
+  ar_data <- numeric(n + p)
+  
+  # Generate random errors
+  epsilon <- rnorm(n + p, sd = sigma)
+  
+  # Initialize AR(1) process for each phi in phi_list
+  for (i in 1:p) {
+    ar_data[i] <- epsilon[i]
+  }
+  
+  # Recursive AR(1) function
+  ar1_recursive <- function(ar_data, phi, index) {
+    if (index <= length(ar_data)) {
+      ar_data[index] <- phi * ar_data[index - 1] + epsilon[index]
+      ar_data <- ar1_recursive(ar_data, phi, index + 1)
+    }
+    return(ar_data)
+  }
+  
+  # Generate AR(p) process recursively
+  for (i in (p + 1):(n + p)) {
+    ar_data[i] <- sum(phi_list * ar_data[(i - p):(i - 1)]) + epsilon[i]
+  }
+  
+  # Return the generated AR(p) process
+  return(ar_data[(p + 1):(n + p)])
+}
+
+# Example usage:
+phi_list <- c(0.7, -0.4, 0.2)  # Autoregressive coefficients
+sigma <- 1  # Standard deviation of the random error
+n <- 100  # Number of observations
+
+# Generate the AR(p) process using the recursive function
+ar_data_recursive <- generate_ARp_recursive(phi_list, sigma, n)
+
+# Plot the generated AR(p) process
+plot(ar_data_recursive, type = 'l', main = 'AR(p) Process (Recursive)', ylab = 'Value', xlab = 'Time')
+
+```
