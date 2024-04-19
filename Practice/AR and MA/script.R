@@ -13,37 +13,59 @@
 # ggplot(data = data.frame(x = time(y), y = y), aes(y = y)) +
 #   geom_histogram()
 # Load the stats package (if not already loaded)
+# 
+# library(ggplot2)
+# # Function to generate AR(1) process
+# generate_AR1 <- function(phi, sigma, n) {
+#   # Initialize an empty vector to store the generated values
+#   ar1_data <- numeric(n)
+#   
+#   # Generate the AR(1) process
+#   for (i in 2:n) {
+#     ar1_data[i] <- phi * ar1_data[i - 1] + rnorm(1, mean = 0, sd = sigma)
+#   }
+#   
+#   # Return the generated AR(1) process
+#   return(ar1_data)
+# }
+# 
+# # Set the parameters for the AR(1) process
+# phi <- 0.7  # Autoregressive coefficient
+# sigma <- 1  # Standard deviation of the random error
+# n <- 100    # Number of observations to generate
+# 
+# # Generate the AR(1) process using the custom function
+# ar1_data_custom <- generate_AR1(phi, sigma, n)
+# 
+# # Create a data frame for ggplot
+# ar1_df <- data.frame(Time = 1:n, Value = ar1_data_custom)
+# 
+# # Plot using ggplot
+# ggplot(ar1_df, aes(x = Time, y = Value)) +
+#   geom_line() +
+#   labs(title = "AR(1) Process",
+#        x = "Time",
+#        y = "Value")
 
-library(ggplot2)
-# Function to generate AR(1) process
-generate_AR1 <- function(phi, sigma, n) {
+
+#--------------
+#AR(1)
+
+phi <- 0.7  # Autoregressive coefficient
+sigma <- 1  # Standard deviation of the random error
+n = 100
+base_ar1 <- function(phi, sigma, n) {
   # Initialize an empty vector to store the generated values
-  ar1_data <- numeric(n)
+  output <- numeric(n)
+  epsilon <- rnorm(n,sd = sigma)
   
-  # Generate the AR(1) process
-  for (i in 2:n) {
-    ar1_data[i] <- phi * ar1_data[i - 1] + rnorm(1, mean = 0, sd = sigma)
+  for(i in (1:n)){
+    output[i+1] <- phi*output[i] + epsilon[i]
   }
   
   # Return the generated AR(1) process
-  return(ar1_data)
+  return(output[-1])
 }
 
-# Set the parameters for the AR(1) process
-phi <- 0.7  # Autoregressive coefficient
-sigma <- 1  # Standard deviation of the random error
-n <- 100    # Number of observations to generate
 
-# Generate the AR(1) process using the custom function
-ar1_data_custom <- generate_AR1(phi, sigma, n)
-
-# Create a data frame for ggplot
-ar1_df <- data.frame(Time = 1:n, Value = ar1_data_custom)
-
-# Plot using ggplot
-ggplot(ar1_df, aes(x = Time, y = Value)) +
-  geom_line() +
-  labs(title = "AR(1) Process",
-       x = "Time",
-       y = "Value")
 

@@ -69,9 +69,9 @@ $$
 
 where:
 
--    $( X_t )$ is the current value of the AR(1) process,
+-   $( X_t )$ is the current value of the AR(1) process,
 
--    $( \phi )$ is the autoregressive coefficient,
+-   $( \phi )$ is the autoregressive coefficient,
 
 -   $( X_{t-1} )$ is the previous value of the process, and
 
