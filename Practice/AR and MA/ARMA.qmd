@@ -25,6 +25,8 @@ theme: cosmo
 
 According to @hamilton_tsa
 
+See also @enders2008applied
+
 A process can be strictly stationary or weakly stationarity (@schrimpf2007time,)
 
 **Strictly Stationarity**
@@ -234,5 +236,15 @@ ar_data_recursive <- generate_ARp_recursive(phi_list, sigma, n)
 
 # Plot the generated AR(p) process
 plot(ar_data_recursive, type = 'l', main = 'AR(p) Process (Recursive)', ylab = 'Value', xlab = 'Time')
+
+```
+
+------------------------------------------------------------------------
+
+```{r}
+ma_spec <- ARIMA(p = 0, d = 0, q = 1) %>%
+  set_engine("stats")
+ma_fit <- ma_spec %>%
+  fit(value ~ 1, data = train_data)
 
 ```
