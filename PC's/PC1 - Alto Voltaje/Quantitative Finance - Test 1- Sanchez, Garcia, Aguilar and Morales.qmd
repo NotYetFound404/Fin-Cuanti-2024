@@ -38,21 +38,41 @@ The card deck is generated according to the following logic:
 ## 1. Creating a stochastic 73 card deck
 
 ```{r}
+# draw_n_cards <- function(n = 73){
+#   #1. equal probability of drawing a card with numbers 1 trough 10
+#   
+#   main_numbers <- round(runif(n = n,min = 1,max = 10))
+#   main_numbers
+#   
+#   #2. equal probability of drawing a card with numbers -1 trough -3 and 1 trough 3
+#   #ARREGLAR, ES POSIBLE QUE TENGA UN NUMERO DE 1 A 3 INDEPENDIENTEMENTE PERO TODOS TIENEN AMBOS VALORES + Y - 
+#   #2.1 Generate n positive and negative values
+#   modifiers_pos <- round(runif(n, min = -3, max = -1))
+#   modifiers_neg <- round(runif(n, min = 1, max = 3))
+#   #2.2 Randomly choose n from both positive and negative values
+#   modifiers <- c(modifiers_pos, modifiers_neg)
+#   modifiers <- sample(x = modifiers,size = n)
+#   modifiers <- modifiers
+#   
+#   #hay que hacer que sea valor absoluto y cuando calcule el valor añadir las columnas +1 y -1 para ambos valores
+#   
+#   #3. Output Dataframe
+#   output <- data.frame(main_numbers = main_numbers, modifiers = modifiers)
+#   return(output)
+# }
+```
+
+Modificado para que el modificador solo sea en valor absoluto
+
+```{r}
 draw_n_cards <- function(n = 73){
   #1. equal probability of drawing a card with numbers 1 trough 10
   
   main_numbers <- round(runif(n = n,min = 1,max = 10))
   main_numbers
   
-  #2. equal probability of drawing a card with numbers -1 trough -3 and 1 trough 3
-  #ARREGLAR, ES POSIBLE QUE TENGA UN NUMERO DE 1 A 3 INDEPENDIENTEMENTE PERO TODOS TIENEN AMBOS VALORES + Y - 
-  #2.1 Generate n positive and negative values
-  modifiers_pos <- round(runif(n, min = -3, max = -1))
-  modifiers_neg <- round(runif(n, min = 1, max = 3))
-  #2.2 Randomly choose n from both positive and negative values
-  modifiers <- c(modifiers_pos, modifiers_neg)
-  modifiers <- sample(x = modifiers,size = n)
-  modifiers <- modifiers
+  #2. equal probability of drawing a card with absolute modifier values of1 trough 3
+  modifiers <- round(runif(n, min = 1, max = 3))
   
   #hay que hacer que sea valor absoluto y cuando calcule el valor añadir las columnas +1 y -1 para ambos valores
   
@@ -131,7 +151,7 @@ fn_anon <- function(n_cards_on_deck = 73, number_of_players = 2, initial_discard
 test
 
 ```{r}
-game_before_shuffling <- fn_anon(n_cards_on_deck  = 10,number_of_players = 1,initial_discard_pile = 4)
+game_before_shuffling <- fn_anon(n_cards_on_deck  = 5,number_of_players = 1,initial_discard_pile = 2)
 ```
 
 ## 4. Shuffle the discard pile
@@ -175,38 +195,197 @@ game_after_shuffling <- suffle_discard_pile(df_list = game_before_shuffling)
 
 ## 5. Function that looks at hand and plays
 
+First we need to calculate the values that a card can take. Because the modifier has a +/- symbol it can take both values
+
 ```{r}
-#Calculate value ---------------------
 calc_value <- function(df){
   output <- df |> dplyr::mutate(
-  Value = main_numbers + modifiers,
-  overflow_value = ifelse(Value > 10, c(9,1),Value),
-  underflow_value = ifelse(Value < 0, c(4,8),Value)
+    modifier_positive = modifiers,
+    modifier_negative = -modifiers,
+  Value_positive = main_numbers + modifier_positive,
+  Value_negative = main_numbers + modifier_negative) |> dplyr::mutate(
+    #Case when there is a positive overflow
+    Value_positive = ifelse(Value_positive > 10, 1,Value_positive),
+    #Case when there is a negative overflow
+    Value_negative = ifelse(Value_positive < 0, 8,Value_negative)
 )
   return(output)
 }
 
+rm_calc <- function(df){
+  output <- df |> dplyr::select(
+    -modifier_positive,
+    -modifier_negative,
+    -Value_positive,
+    -Value_negative)
+  return(output)
+}
 
-#---------------
+```
 
-#Grab the card on the highest z-index in the discard pile
+```{r}
+# #---------------
+# #1. Grab the card on the highest z-index in the discard pile
+# top_Card_on_discard_pile <- game_after_shuffling[["0"]][which.max(game_after_shuffling[["0"]]$z_index), ]
+# #top_Card_on_discard_pile
+# 
+# #2. Look at my hand
+# my_hand <- game_after_shuffling[["1"]]
+# 
+# #3. calculate the card's value with the modifier
+# #3.1 Compute my cards value
+# my_hand <- calc_value(my_hand)
+# #3.2 Compute the value of the card on top of the discard pile
+# top_Card_on_discard_pile <- calc_value(top_Card_on_discard_pile)
+# 
+# #View(my_hand)
+# #View(top_Card_on_discard_pile)
+# 
+# #4. Store playable cards
+# #4.1 Posible Cards to match belong to card on top
+# cards_to_match <- c(top_Card_on_discard_pile$Value_positive,
+#                     top_Card_on_discard_pile$Value_negative)
+# #4.2 Cards in my deck that match either value of the card on top's main number +/- its modifier
+# playable_cards <- my_hand |> dplyr::filter(
+#   Value_positive %in% cards_to_match | Value_negative %in% cards_to_match)
+# #4.3 Select the card that will be played
+# #Selection criteria = the first that comes up if there are any
+# if(dim(playable_cards)[1] > 0){
+#   #select card to play
+#   card_to_play <- dplyr::first(playable_cards)
+#   # Remove played card
+#   my_hand_after <- dplyr::anti_join(my_hand, card_to_play, by = c("main_numbers", "modifiers"))
+#   # Add the selected card to the discard pile
+#   card_to_play <- card_to_play |> dplyr::mutate(
+#     z_index = top_Card_on_discard_pile$z_index + 1 #Adjust the z-index
+#   )
+#   discard_pile_after <- dplyr::bind_rows(card_to_play, discard_pile)
+#    
+# } else{
+#   card_to_play <- NULL
+#   print("There is no possible play")
+# }
+```
 
-top_Card_on_discard_pile <- game_after_shuffling[["0"]][which.max(game_after_shuffling[["0"]]$z_index), ]
-top_Card_on_discard_pile
+```{r}
+# #1. Grab the card on the highest z-index in the discard pile
+# discard_pile <- game_after_shuffling[["0"]]
+# top_Card_on_discard_pile <- discard_pile[which.max(game_after_shuffling[["0"]]$z_index), ]
+# #top_Card_on_discard_pile
+# 
+# #2. Look at my hand
+# my_hand <- game_after_shuffling[["1"]]
+# 
+# #3. calculate the card's value with the modifier
+# #3.1 Compute my cards value
+# my_hand <- calc_value(my_hand)
+# #3.2 Compute the value of the card on top of the discard pile
+# top_Card_on_discard_pile <- calc_value(top_Card_on_discard_pile)
+# 
+# #View(my_hand)
+# #View(top_Card_on_discard_pile)
+# 
+# #4. Store playable cards
+# #4.1 Posible Cards to match belong to card on top
+# cards_to_match <- c(top_Card_on_discard_pile$Value_positive,
+#                     top_Card_on_discard_pile$Value_negative)
+# #4.2 Cards in my deck that match either value of the card on top's main number +/- its modifier
+# playable_cards <- my_hand |> dplyr::filter(
+#   Value_positive %in% cards_to_match | Value_negative %in% cards_to_match)
+# #4.3 Select the card that will be played
+# #Selection criteria = the first that comes up if there are any
+# if(nrow(playable_cards) > 0){
+#   #select card to play
+#   card_to_play <- dplyr::first(playable_cards)
+#   # Remove played card
+#   my_hand_after <- dplyr::anti_join(my_hand, card_to_play, by = c("main_numbers", "modifiers"))
+#   
+#   # Remove calculation on my hand
+#   my_hand_after <- rm_calc(df = my_hand_after)
+#   
+#   #rm calculation on card_to play
+#   card_to_play <- rm_calc(card_to_play)
+#   # Add the selected card to the discard pile
+#   card_to_play <- card_to_play |> dplyr::mutate(
+#     z_index = top_Card_on_discard_pile$z_index + 1 #Adjust the z-index
+#   )
+#   discard_pile_after <- dplyr::bind_rows(card_to_play, discard_pile)
+#   
+# } else{
+#   card_to_play <- NULL
+#   print("There is no possible play")
+# }
+```
 
-#look at my hand
-my_hand <- game_after_shuffling[["1"]]
-my_hand
+As a function
 
-#calculate what cards can be played
+ 
 
-#Compute my cards value
-my_hand <- calc_value(my_hand)
-my_hand
-#Compute the value of the card on top of the discard pile
-top_Card_on_discard_pile <- calc_value(top_Card_on_discard_pile)
+```{r}
+fn_anon2 <- function(my_hand_input_df = game_after_shuffling[["1"]],discard_pile_input_df = game_after_shuffling[["0"]]){
+  #1. Grab the card on the highest z-index in the discard pile
+  discard_pile <- discard_pile_input_df 
+  top_Card_on_discard_pile <- discard_pile[which.max(game_after_shuffling[["0"]]$z_index), ]
+  #2. Look at my hand
+  my_hand <- my_hand_input_df
+  #3. calculate the card's value with the modifier
+  #3.1 Compute my cards value
+  my_hand <- calc_value(my_hand)
+  #3.2 Compute the value of the card on top of the discard pile
+  top_Card_on_discard_pile <- calc_value(top_Card_on_discard_pile)
+  #4. Store playable cards
+  #4.1 Posible Cards to match belong to card on top
+  cards_to_match <- c(top_Card_on_discard_pile$Value_positive,
+                      top_Card_on_discard_pile$Value_negative)
+  #4.2 Cards in my deck that match either value of the card on top's main number +/- its modifier
+  playable_cards <- my_hand |> dplyr::filter(
+    Value_positive %in% cards_to_match | Value_negative %in% cards_to_match)
+  #4.3 Select the card that will be played
+  #Selection criteria = the first that comes up if there are any
+  if(nrow(playable_cards) > 0){
+    #select card to play
+    card_to_play <- dplyr::first(playable_cards)
+    # Remove played card
+    my_hand_after <- dplyr::anti_join(my_hand, card_to_play, by = c("main_numbers", "modifiers"))
+    # Remove calculation on my hand
+    my_hand_after <- rm_calc(df = my_hand_after)
+    #rm calculation on card_to play
+    card_to_play <- rm_calc(card_to_play)
+    # Add the selected card to the discard pile
+    card_to_play <- card_to_play |> dplyr::mutate(
+      z_index = top_Card_on_discard_pile$z_index + 1 #Adjust the z-index
+    )
+    discard_pile_after <- dplyr::bind_rows(card_to_play, discard_pile)
+    
+    #Return a list
+    output <- list(my_hand_after = my_hand_after, discard_pile_after = discard_pile_after)
+  } else{
+    card_to_play <- NULL
+    print("There is no possible play")
+    
+    #Return a list
+    output <- list(my_hand_after = my_hand, discard_pile_after = discard_pile)
+  }
+  return(output)
+}
+```
 
+Testing 5
 
+```{r}
+View(game_after_shuffling)
+test  <-  fn_anon2()
+View(test)
+```
 
+Re test
 
+```{r}
+test2  <-  fn_anon2(my_hand_input_df = test$my_hand_after,discard_pile_input_df = test$discard_pile_after )
+```
+
+Re test 2
+
+```{r}
+test3  <-  fn_anon2(my_hand_input_df = test2$my_hand_after,discard_pile_input_df = test2$discard_pile_after )
 ```
