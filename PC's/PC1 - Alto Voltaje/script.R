@@ -1,30 +1,3 @@
----
-title: "Alto Voltaje"
-author: 
-  - name: Alicia Sanchez Alberca
-  - name: César García Asto
-  - name: Daniel Aguilar Paucar
-  - name: Giuliano Morales Moreyra
-format: 
-  html:
-    toc: true
-    toc_depth: 6
-    embed-resources: true
-    code-fold: true
-    error: false
-    warning: false
-    code-tools: true
-    code-copy: true
-editor: visual
-output: asis
-theme: cosmo 
----
-
-## 1.
-
-Punto 1
-
-```{r}
 draw_n_cards <- function(n = 73){
   #1. equal probability of drawing a card with numbers 1 trough 10
   
@@ -40,13 +13,6 @@ draw_n_cards <- function(n = 73){
   output <- data.frame(main_numbers = main_numbers, modifiers = modifiers)
   return(output)
 }
-```
-
-## 2.
-
-Punto 2
-
-```{r}
 draw_n_cards_for_m_players <- function(player_number = 2, n_cards_on_deck = 73, discard_pile_minimum = 1){
   
   #There's always one card on the discard pile
@@ -65,13 +31,6 @@ draw_n_cards_for_m_players <- function(player_number = 2, n_cards_on_deck = 73, 
            rep(1:player_number, each = cards_for_each_player))
   return(Vec)
 }
-```
-
-## 3.
-
-Punto 3
-
-```{r}
 fn_anon <- function(n_cards_on_deck = 73, number_of_players = 2, initial_discard_pile = 1){
   #Generate 73 cards 
   df <- draw_n_cards(n = n_cards_on_deck)
@@ -85,13 +44,6 @@ fn_anon <- function(n_cards_on_deck = 73, number_of_players = 2, initial_discard
   df_list <- split(df, df$card_holder)
   return(df_list)
 }
-```
-
-## 4.
-
-Punto 4
-
-```{r}
 suffle_discard_pile <- function(df_list, debug_mode = F){
   if(debug_mode == T){
     #Debug mode adds the index in the original discard pile (it should be different when shuffled)
@@ -114,13 +66,6 @@ suffle_discard_pile <- function(df_list, debug_mode = F){
   }
   return(df_list)
 }
-```
-
-## 5.
-
-Punto 5.
-
-```{r}
 calc_value <- function(df){
   output <- df |> dplyr::mutate(
     modifier_positive = modifiers,
@@ -142,13 +87,6 @@ rm_calc <- function(df){
     -Value_negative)
   return(output)
 }
-```
-
-## 6.
-
-Punto 6.
-
-```{r}
 fn_anon2 <- function(player_id = "1", my_hand_input_df = game_after_shuffling[["1"]],discard_pile_input_df = game_after_shuffling[["0"]]){
   #1. Grab the card on the highest z-index in the discard pile
   discard_pile <- discard_pile_input_df 
@@ -197,14 +135,7 @@ fn_anon2 <- function(player_id = "1", my_hand_input_df = game_after_shuffling[["
   }
   return(output)
 }
-```
-
-## 7.
-
-Punto 7.
-
-```{r}
-fn_anon3 <- function(player_number,card_original_setup){
+fn_anon3 <- function(player_number,card_original_setup, debug_mode = F){
   #Stores the state of the players deck and the discard pile trough time
   steps_list <- list()
   # Initial values for my_hand_input_df and discard_pile_input_df
@@ -220,11 +151,18 @@ fn_anon3 <- function(player_number,card_original_setup){
     step_output <- fn_anon2(my_hand_input_df = my_hand_df, discard_pile_input_df = discard_pile_df)
     #check if there was a card to play
     if(step_output$card_to_play == "There is a card to play"){
-      print(paste0("It is Player N°{", player_number, "} turn"))
+      
+      
+      if(debug_mode == T){
+        print(paste0("It is Player N°{", player_number, "} turn"))  
+      }
+      
       # Increment the number of cards played
       player_has_played_n_cards <- player_has_played_n_cards + 1
       #State how many cards has the player played so far
+      if(debug_mode == T){
       print(paste0("Player N°{",player_number,"} has played {", player_has_played_n_cards, "} many times so far"))
+      }
       #.................
       # Store the step's output in the list
       steps_list$ith_state[[player_has_played_n_cards]] <- step_output
@@ -234,8 +172,11 @@ fn_anon3 <- function(player_number,card_original_setup){
       #Store how many times the player has played
       steps_list[["number_of_turns"]] <- player_has_played_n_cards
     } else{
+      
+      if(debug_mode == T){
       print(paste0("Player N°{", player_number, "} has stopped playing"))
       print(paste0("Player N°{", player_number, "}, played {", player_has_played_n_cards, "} cards in total"))
+      }
       #Store how many times the player has played
       steps_list[["number_of_turns"]] <- player_has_played_n_cards
       break
@@ -243,4 +184,3 @@ fn_anon3 <- function(player_number,card_original_setup){
   }
   return(steps_list)  
 }
-```
