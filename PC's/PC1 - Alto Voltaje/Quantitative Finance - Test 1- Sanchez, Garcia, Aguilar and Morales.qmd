@@ -20,31 +20,57 @@ output: asis
 theme: cosmo 
 ---
 
-## 1.
+## 1. *draw_n_cards*
 
-Punto 1
+-   Parameters: number of cards that the game will have (default value = 73)
+
+-   Output: a dataframe with two colums main number (1-10) and modifier (absolute value 1-3)
+
+-   Logic: Use the uniform distribution to randomly draw the main and modifier number. Then round it to make the output an integer
 
 ```{r}
 draw_n_cards <- function(n = 73){
   #1. equal probability of drawing a card with numbers 1 trough 10
-  
   main_numbers <- round(runif(n = n,min = 1,max = 10))
-  main_numbers
-  
-  #2. equal probability of drawing a card with absolute modifier values of1 trough 3
+  #2. equal probability of drawing a card with absolute modifier values of1 trough3
   modifiers <- round(runif(n, min = 1, max = 3))
-  
-  #hay que hacer que sea valor absoluto y cuando calcule el valor añadir las columnas +1 y -1 para ambos valores
-  
   #3. Output Dataframe
   output <- data.frame(main_numbers = main_numbers, modifiers = modifiers)
   return(output)
 }
 ```
 
-## 2.
+## 2. *draw_n_cards_for_m_players*
 
-Punto 2
+-   Parameters
+
+    -   Number of players (*player_number*). Default value: 2 players
+
+    -   Number of cards to be played (*n_cards_on_deck*). Default value: 73 cards
+
+    -   Number of cards that will go to the discard pile (*discard_pile_minimum*). Default value: 1 card
+
+-   Logic
+
+    -   First, draws a the original number of cards that will go on the discard pile. Then shares the number of cards left between the players. If there are cards remaining after sharing with the players they are added to the discard pile.
+
+-   Output
+
+    -   Orderedd vector that repeats the "ID" for each player (begins with one, ends with the number of players) and discard pile (always is 0)
+
+    -   Examples 1.
+
+        -   Draw 4 cards for 2 players with a minimum 1 card on the discard pile.
+
+        -   0 (one card is put on the discard pile) 1 (give one card to player 1) 2 (gives to player 2) 0 (cant give both one card, is placed on the discard pile.
+
+        -   Result = 0012. Which means: 2 cards on the discard pile, and one for each player
+
+    -   Example 2
+
+        -   Draw 5 cards for 2 players with a minimum 1 card on the discard pile.
+
+        -   Result: 01122
 
 ```{r}
 draw_n_cards_for_m_players <- function(player_number = 2, n_cards_on_deck = 73, discard_pile_minimum = 1){
@@ -54,7 +80,7 @@ draw_n_cards_for_m_players <- function(player_number = 2, n_cards_on_deck = 73, 
   #After accounting for the card on the discard pile, theres a new number of available cards
   available_cards <- n_cards_on_deck - cards_to_discard_pile
   #Each player will be have the following cards
-  cards_for_each_player <- round(available_cards/player_number)
+  cards_for_each_player <- floor(available_cards/player_number)
   #When there's an uneven number of platers,more cards will be added to the discard pile
   cards_to_discard_pile <- cards_to_discard_pile + (available_cards %% player_number)
   
@@ -65,11 +91,34 @@ draw_n_cards_for_m_players <- function(player_number = 2, n_cards_on_deck = 73, 
            rep(1:player_number, each = cards_for_each_player))
   return(Vec)
 }
+draw_n_cards_for_m_players(player_number = 2,n_cards_on_deck = 5,discard_pile_minimum = 1)
 ```
 
-## 3.
+## 3. *fn_anon*
 
-Punto 3
+-   Parameters
+
+    -   Number of cards that will be played in the game (*n_cards_on_deck*). Default value: 73
+
+    -   Number of players (*number_of_players).* Default value: 2
+
+    -   Number of initial cards on the discard pile. (*initial_discard_pile*). Default value: 2
+
+-   Logic
+
+    -   Create the df that holds *n_cards_on_deck* (each card has a main number and modifier in absolute value)
+
+    -   Split the cars with the number of players. Get the ordered vector.
+
+    -   Assign the cards to each card holders. Add as a colum the "ID" for each player (begins with one, ends with the number of players) and discard pile (always is 0)
+
+    -   Turns this dataframe to a list
+
+-   Output.
+
+    -   Should be: "will output a list which has 2 items: Players and Discard Pile" Players will be another list which holds one dataframe per player which represents the cards that they have in hand
+
+    -   Actually is: Outputs a list of ordered vectors that each "ID" represents wheter that object is the discard pile or a player
 
 ```{r}
 fn_anon <- function(n_cards_on_deck = 73, number_of_players = 2, initial_discard_pile = 1){
@@ -87,9 +136,19 @@ fn_anon <- function(n_cards_on_deck = 73, number_of_players = 2, initial_discard
 }
 ```
 
-## 4.
+## 4. *suffle_discard_pile*
 
-Punto 4
+-   parameters: A list that has the players cards and discard pile (*df_list)*. A boolean value that allows to debug (*debug_mode*)
+
+-   Logic
+
+    -   Debuging logic. Allows to check if it was truly shuffled by compring the index of the original discard pile against the shuffled one
+
+    -   Code: copy the discard pile value from df_list. Shuffle with *sample_n.* Add a z-index that will determine which card is on top (higher z-index means closer to the top, lower means it is closer to the bottom)
+
+-   Output
+
+    -   Returns the df_list but changes shuffles the discard pile
 
 ```{r}
 suffle_discard_pile <- function(df_list, debug_mode = F){
@@ -116,9 +175,11 @@ suffle_discard_pile <- function(df_list, debug_mode = F){
 }
 ```
 
-## 5.
+## 5. Helper function
 
-Punto 5.
+-   *Calc_value* allows to calculate the value that a card can have. Accounts for overflow and underflow cases
+
+-   *rm_calc* removes all the calculations done beforehand
 
 ```{r}
 calc_value <- function(df){
@@ -146,7 +207,23 @@ rm_calc <- function(df){
 
 ## 6.
 
-Punto 6.
+-   Logic
+
+    -   Checks what card is on top of the discard pile (the one with the highest z-index)
+
+    -   Looks at my hand and computes the value of my hand's cards
+
+    -   Computes the values of the card on top of the discard pile
+
+    -   Grabs the positive and negative values of the card on top. This are the cards that I need to match with my hand, so I will remember them
+
+    -   Look for playable cards in my hand that have the same value as the cards to match
+
+    -   If there are any playable cards in my hand that match any value from the card on top, I will select the first that comes to mind.
+
+        -   After selecting the card, I remove this card from my hand. Then forget about the calculations made (for my hand and the card on top). Finlly place the card on top of the discard pile (add this card with a higher z-index than the card before). I shout: "There is a card to play"
+
+    -   If there are no playable cards in my hand. I shout "There is no posible card to play". And dont change anything in my hand or the discard pile
 
 ```{r}
 fn_anon2 <- function(player_id = "1", my_hand_input_df = game_after_shuffling[["1"]],discard_pile_input_df = game_after_shuffling[["0"]]){
@@ -201,7 +278,13 @@ fn_anon2 <- function(player_id = "1", my_hand_input_df = game_after_shuffling[["
 
 ## 7.
 
-Punto 7.
+Simulate a one player game and track the time which it takes to empty all his hand
+
+-   Setup: start the game with the number of players and cards on the discard pile. Shuffle the cards in the discard pile. Pick which player you'll be playing as. Start playing the game (*fn_anon3*)
+
+--------------
+
+-   Parameters: Which player youll be playing as (*player_number)*. Card setup after shuffling (*card_original_setup),* contains info about each players hand and the discard pile
 
 ```{r}
 fn_anon3 <- function(player_number,card_original_setup){
