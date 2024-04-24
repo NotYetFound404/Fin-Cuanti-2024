@@ -1,0 +1,93 @@
+---
+title: "Alto Voltaje"
+author: 
+  - name: Alicia Sanchez Alberca
+  - name: César García Asto
+  - name: Daniel Aguilar Paucar
+  - name: Giuliano Morales Moreyra
+format: 
+  html:
+    toc: true
+    toc_depth: 6
+    embed-resources: true
+    code-fold: true
+    error: false
+    warning: false
+    code-tools: true
+    code-copy: true
+editor: visual
+output: asis
+theme: cosmo 
+---
+
+## **One-Person Game Documentation**
+
+z
+
+## **Parallel Game Simulation Documentation**
+
+UNA BUENA IDEA ES SIMULAR DE 1000 EN 1000 JUEGOS DE MANERA PARELELA
+
+This function performs a parallel simulation of the game using the specified number of simulations (**`n_sim`**). It utilizes multiple cores for faster computation.
+
+### **Usage**
+
+```         
+parallel_simulation(n_sim)
+```
+
+### **Parameters**
+
+-   **`n_sim`**: Numeric. Number of simulations to run.
+
+### **Required Packages**
+
+-   **`foreach`**: For parallel iteration.
+
+-   **`doParallel`**: For parallel backend.
+
+-   **`parallelly`**: For detecting the correct number of cores.
+
+-   **`tictoc`**: For measuring execution time.
+
+-   **`ggplot2`**: For creating visualizations.
+
+### **Function Flow**
+
+1.  Load required libraries.
+
+2.  Source optimized functions from a specific file path.
+
+3.  Set up parallelization with all available cores minus one.
+
+4.  Export necessary functions to parallel workers.
+
+5.  Perform *n_sim* **individual game simulations** in parallel.
+
+6.  Calculate and return the time taken for each simulation.
+
+7.  Stop the cluster after computations.
+
+### **Example 1:**
+
+```{r}
+n_sim <- 10
+tictoc::tic()
+re <- parallel_simulation(n_sim = n_sim)
+total_time <- tictoc::toc()
+print(paste0("Total compute time: ", total_time$callback_msg))
+print(paste0("Average compute time per simulation: ", mean(re)))
+```
+
+### **Visualization**
+
+Plot the data into a histogram using **`ggplot2`** to visualize the distribution of computation times across simulations.
+
+```{r}
+library(ggplot2)
+p <- ggplot(data = data.frame(time=re), aes(x = time)) +
+  geom_histogram() +  # Adjust binwidth as needed
+  labs(x = "Time (seconds)", y = "Frequency", title = "Computation Time Histogram")
+p
+
+```

@@ -24,7 +24,7 @@ parallel_simulation <- function(n_sim) {
   stopCluster(my_cluster)
   return(time_vector)
 }
-n_sim <- 100
+n_sim <- 50
 tictoc::tic()
 re <- parallel_simulation(n_sim = n_sim)
 total_time <- tictoc::toc()
