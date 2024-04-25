@@ -1,0 +1,22 @@
+---
+title: "Alto Voltaje"
+author: 
+  - name: Alicia Sanchez Alberca
+  - name: César García Asto
+  - name: Daniel Aguilar Paucar
+  - name: Giuliano Morales Moreyra
+format: 
+  html:
+    toc: true
+    toc_depth: 6
+    embed-resources: true
+    code-fold: true
+    error: false
+    warning: false
+    code-tools: true
+    code-copy: true
+editor: visual
+output: asis
+theme: cosmo 
+---
+

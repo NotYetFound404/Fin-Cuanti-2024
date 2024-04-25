@@ -20,13 +20,64 @@ output: asis
 theme: cosmo 
 ---
 
-## **One-Person Game Documentation**
+## **One-Person Game**
 
-z
+This code snippet simulates a one-person game using optimized functions sourced from a specific file path.
+
+### **Functionality**
+
+1.  **Initialize Game**: Creates a game instance with the specified parameters.
+
+    -   **`num_cards`**: Number of cards in the game.
+
+    -   **`number_of_players`**: Number of players in the game (in this case, 1).
+
+    -   **`min_discard_pile`**: Minimum size of the discard pile.
+
+2.  **Shuffle Discard Pile**: Shuffles the discard pile of the game.
+
+3.  **Simulate Game**: Simulates the game for a single player.
+
+    -   **`player_id`**: Identifier for the player (in this case, "1").
+
+```{r}
+source(paste0(getwd(), "/PC's/PC1 - Alto Voltaje/Version Final - 1 (vectorizado)/optimized_functions.R"))
+
+# Initialize, shuffle, and simulate the game
+game <- initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |>
+  shuffle_discard_pile() |>
+  simulate_game(player_id = "1")
+```
+
+### **Output**
+
+-   **`discard_pile`**: Information about the discard pile in the game.
+
+-   **`players_info`**: Information about the players in the game (in this case, only one player).
+
+-   **`card_to_play`**: The card selected to play in the game.
+
+```{r}
+# Retrieve game information
+discard_pile <- game$Discard_Pile
+players_info <- game$Players
+card_to_play <- game$card_to_play
+
+# Output the game's discard pile, player information, and the card to play
+print(discard_pile)
+print(players_info)
+print(card_to_play)
+```
+
+In depth detail of each function:
+
+```{r}
+v
+```
 
 ## **Parallel Game Simulation Documentation**
 
-UNA BUENA IDEA ES SIMULAR DE 1000 EN 1000 JUEGOS DE MANERA PARELELA
+**UNA BUENA IDEA ES SIMULAR DE 1000 EN 1000 JUEGOS DE MANERA PARELELA**
 
 This function performs a parallel simulation of the game using the specified number of simulations (**`n_sim`**). It utilizes multiple cores for faster computation.
 
