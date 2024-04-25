@@ -33,8 +33,6 @@ initialize_game <- function(num_cards = 73, number_of_players = 2, min_discard_p
   )
   return(output)
 }
-
-
 shuffle_discard_pile  <- function(game_state){
   game_state$Discard_Pile <- sample(game_state$Discard_Pile, replace = FALSE)
   game_state$Discard_Pile$z_index <- seq_len(nrow(game_state$Discard_Pile))
