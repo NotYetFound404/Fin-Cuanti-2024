@@ -10,14 +10,23 @@ format:
     toc: true
     toc_depth: 6
     embed-resources: true
-    code-fold: true
+    code-fold: show
     error: false
     warning: false
     code-tools: true
     code-copy: true
+    df-print: paged
+    code-overflow: wrap
+    code-line-numbers: true
+    theme: simplex
+    fontsize: 1.2em
+    linestretch: 1.7
+    mainfont: Helvetica Neue, Helvetica, Arial, sans
+    monofont: Cascadia Mono, Menlo, Consolas, Courier New, Courier
+    backgroundcolor: "white"
+    fontcolor: "black"
 editor: visual
-output: asis
-theme: cosmo 
+output: true
 ---
 
 # Introduction
@@ -27,18 +36,18 @@ In this document, we will explore the creation and simulation of a card game usi
 # Functions
 
 1.  **create_card_deck**
-    -   Input: amount of cards (default value 73)
+    -   Input: amount of cards that the game will have (default value 73)
     -   Output: dataframe with main number and modifier
 2.  **deal_cards**
-    -   Input: number of players (default value 2)
-    -   Output: vector with cards for each player and cards on discard pile
+    -   Input: number of players (default value 2), the number of cards to be dealt, the minimum number of cards that will go on the discard pile
+    -   Output: vector with cards for each player and cards on discard pile. Represented with numbers 1 to the number of players, and 0 for the discard pile
 3.  **initialize_game**
-    -   Input: cards dataframe, vector from deal_cards
-    -   Output: list with Players (dataframe for each player) and Discard Pile (dataframe)
+    -   Input: dataframe of a deck of cards from create_card_deck, vector from deal_cards
+    -   Output: list with Players (dataframe representin each player's hand and its corresponding values) and Discard Pile (dataframe)
 4.  **shuffle_discard_pile**
-    -   Input: discard pile dataframe
+    -   Input: the initialized game that contains the discard pile dataframe
 
-    -   Output: shuffled discard pile dataframe
+    -   Output: the initialized game with a shuffled discard pile dataframe and a z-index colum
 5.  **play_card**
     -   Input: player's hand, discard pile
 
@@ -60,6 +69,12 @@ create_card_deck  <- function(num_cards = 73){
 }
 ```
 
+**Example:**
+
+```{r}
+create_card_deck(num_cards = 5)
+```
+
 ## **2. `deal_cards` Function**
 
 ```{r}
@@ -70,6 +85,13 @@ deal_cards <- function(num_players  = 2, num_cards  = 73, min_discard_pile  = 1)
   return(c(rep(0, times = remaining_cards_for_discard),
            rep(1:num_players , each = cards_per_player)))
 }
+```
+
+**Example:**
+
+```{r}
+deal_cards(num_players = 2,num_cards = 5,min_discard_pile = 1)
+
 ```
 
 ## **3. `initialize_game` Function**
@@ -99,14 +121,32 @@ initialize_game <- function(num_cards = 73, number_of_players = 2, min_discard_p
 }
 ```
 
+**Example:**
+
+```{r}
+initialize_game(num_cards = 10,number_of_players = 2,min_discard_pile = 1)
+```
+
 ## **4. `shuffle_discard_pile` Function**
 
 ```{r}
 shuffle_discard_pile  <- function(game_state){
   game_state$Discard_Pile <- sample(game_state$Discard_Pile, replace = FALSE)
+  #Adds z-index to keep track of which card is on top
   game_state$Discard_Pile$z_index <- seq_len(nrow(game_state$Discard_Pile))
   return(game_state)
 }
+```
+
+**Example:**
+
+```{r}
+game <- initialize_game(num_cards = 6,number_of_players = 2, min_discard_pile = 2)
+shuffled_game <- game |> shuffle_discard_pile()
+#Print original discard pile
+game$Discard_Pile
+#Print shuffled discard pile
+shuffled_game$Discard_Pile
 ```
 
 ## **5. `play_card` Function**
@@ -157,6 +197,21 @@ play_card <- function(game_state, player_id = "1") {
 }
 ```
 
+**Example:**
+
+```{r}
+game <- initialize_game(num_cards = 10,number_of_players = 1,min_discard_pile = 1) |> shuffle_discard_pile()
+game_after_player1_turn <- game |> play_card()
+#Let's compare player1's hand before playing
+game$Players[["1"]]
+#After playing, player1's hand is changed!
+game_after_player1_turn$Players[["1"]]
+#Has there been any changes?
+!identical(game$Players[["1"]],game_after_player1_turn$Players[["1"]])
+#Yes, the players hand has changed
+
+```
+
 ## **6. `simulate_game` Function**
 
 ```{r}
@@ -182,6 +237,26 @@ simulate_game <- function(game_state, player_id){
 
 ```
 
+**Example:**
+
+```{r}
+game <- initialize_game(num_cards = 10,number_of_players = 1,min_discard_pile = 1)|>shuffle_discard_pile()
+finished_game <- simulate_game(game_state = game,player_id = "1")
+
+
+#Let's compare the discard pile before playing
+game$Discard_Pile
+#After playing, discard pile will have changed!
+finished_game$Discard_Pile
+#Has there been any changes?
+!identical(game$Discard_Pile, finished_game$Discard_Pile)
+#Yes, the players has finished playing and the discard pile has new cards on top
+
+#We can also see how much time this to play this game took
+finished_game$time_taken
+
+```
+
 Implement each function with code examples and explanations. Use code blocks for clarity and include comments where necessary.
 
 # Simulation of a one-player game
@@ -194,16 +269,38 @@ Perform the one player game simulation and track the time taken to empty the han
 game <- initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |> 
       shuffle_discard_pile() |> 
       simulate_game(player_id = "1")
+
+game
 ```
 
 # Playing many times
 
 ```{r}
-n = 2
-games_list <- purrr::map(1:n, ~ initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |>
-                    shuffle_discard_pile())
+# n = 10
+# games_list <- purrr::map(1:n, ~ initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |> shuffle_discard_pile())
+# #Play the games with vectorization
+# played_games <- purrr::map(games_list, ~ simulate_game(.x, "1"))
+
+library(future)
+library(purrr)
+# Set up parallel processing
+plan(strategy = multisession(workers =availableCores()-1))
+n = 100000
+games_list <- future_map(1:n, ~ initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |> shuffle_discard_pile(),.options = furrr_options(seed = T,scheduling = 2, chunk_size = NULL))
 #Play the games with vectorization
-played_games <- purrr::map(games_list, ~ simulate_game(.x, "1"))
+
+played_games <- future_map(games_list, ~ simulate_game(.x, "1"),.options = furrr_options(seed = T,scheduling = 2, chunk_size = NULL))
+
+
+```
+
+\
+Get the average compute time each game took
+
+```{r}
+compute_times <- purrr::map_dbl(played_games, ~ .x$time_taken$toc - .x$time_taken$tic)
+mean(compute_times)
+
 ```
 
 # Conclusion
