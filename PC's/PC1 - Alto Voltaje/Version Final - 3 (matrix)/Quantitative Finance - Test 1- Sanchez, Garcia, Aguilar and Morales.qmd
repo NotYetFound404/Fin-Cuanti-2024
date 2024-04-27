@@ -1,0 +1,685 @@
+---
+title: "Alto Voltaje"
+author: 
+  - name: Alicia Sanchez Alberca
+  - name: César García Asto
+  - name: Daniel Aguilar Paucar
+  - name: Giuliano Morales Moreyra
+format: 
+  html:
+    toc: true
+    toc_depth: 6
+    embed-resources: true
+    code-fold: show
+    error: false
+    warning: false
+    code-tools: true
+    code-copy: true
+    df-print: paged
+    code-overflow: wrap
+    code-line-numbers: true
+    theme: simplex
+    fontsize: 1.2em
+    linestretch: 1.7
+    mainfont: Helvetica Neue, Helvetica, Arial, sans
+    monofont: Cascadia Mono, Menlo, Consolas, Courier New, Courier
+    backgroundcolor: "white"
+    fontcolor: "black"
+editor: visual
+output: true
+---
+
+# Introduction
+
+In this document, we will explore the creation and simulation of a card game using R programming. The task involves developing several functions, including creating a card deck with randomized values, dealing cards to players, initializing the game state, shuffling the discard pile, playing cards strategically, and simulating the game to track the average time the computations take. Through these functions and simulations, we aim test if a bot could hinder the games success.
+
+# Functions
+
+1.  **create_card_deck**
+    -   Input: amount of cards that the game will have (default value 73)
+    -   Output: dataframe with main number and modifier
+2.  **deal_cards**
+    -   Input: number of players (default value 2), the number of cards to be dealt, the minimum number of cards that will go on the discard pile
+    -   Output: vector with cards for each player and cards on discard pile. Represented with numbers 1 to the number of players, and 0 for the discard pile
+3.  **initialize_game**
+    -   Input: dataframe of a deck of cards from create_card_deck, vector from deal_cards
+    -   Output: list with Players (dataframe representin each player's hand and its corresponding values) and Discard Pile (dataframe)
+4.  **shuffle_discard_pile**
+    -   Input: the initialized game that contains the discard pile dataframe
+
+    -   Output: the initialized game with a shuffled discard pile dataframe and a z-index colum
+5.  **play_card**
+    -   Input: player's hand, discard pile
+
+    -   Output: update player's hand and discard pile based on playable card
+6.  **simulate_game**
+    -   Input: game state
+    -   Output: time taken to empty player's hand
+
+# Implementation
+
+## **1. `create_card_deck` Function**
+
+```{r}
+create_card_deck  <- function(num_cards = 73){
+  main_numbers <- round(runif(n = num_cards,min = 1,max = 10))
+  modifiers <- round(runif(num_cards, min = 1, max = 3))
+  output <- data.frame(main_numbers = main_numbers, modifiers = modifiers)
+  return(output)
+}
+```
+
+**Example:**
+
+```{r}
+create_card_deck(num_cards = 5)
+```
+
+## **2. `deal_cards` Function**
+
+```{r}
+deal_cards <- function(num_players  = 2, num_cards  = 73, min_discard_pile  = 1){
+  total_cards_excluding_discard <- num_cards  - min_discard_pile 
+  cards_per_player <- total_cards_excluding_discard %/% num_players 
+  remaining_cards_for_discard <- num_cards  - cards_per_player*num_players 
+  return(c(rep(0, times = remaining_cards_for_discard),
+           rep(1:num_players , each = cards_per_player)))
+}
+```
+
+**Example:**
+
+```{r}
+deal_cards(num_players = 2,num_cards = 5,min_discard_pile = 1)
+
+```
+
+## **3. `initialize_game` Function**
+
+```{r}
+initialize_game <- function(num_cards = 73, number_of_players = 2, min_discard_pile = 1){
+  # Generate 73 cards
+  df <- create_card_deck (num_cards = num_cards)
+  #Calculate the cards values before-hand
+  df$values_positive <- df$main_numbers + df$modifiers
+  df$values_negative <- df$main_numbers - df$modifiers
+  df$values_positive <- ifelse(df$values_positive > 10, 1, df$values_positive)
+  df$values_negative <- ifelse(df$values_negative < 0, 8, df$values_negative)
+
+  # Add a unique identifier column
+  df$card_id <- seq_len(nrow(df))
+  # Deal the cards(Decide which cards are assigned to whom)
+  card_holder <- deal_cards(num_players = number_of_players, num_cards = num_cards, min_discard_pile  = min_discard_pile)
+  # Group the dataframe by card_holder and split into list
+  df_split <- split(df, card_holder)
+  # Create output list with discard pile and players' hands
+  output <- list(
+    "Discard_Pile" = df_split[[1]],  # Using [[0]] for the discard pile (card_holder = 0)
+    "Players" = df_split[-1]  # Rest of the groups correspond to players
+  )
+  return(output)
+}
+```
+
+**Example:**
+
+```{r}
+initialize_game(num_cards = 10,number_of_players = 2,min_discard_pile = 1)
+```
+
+## **4. `shuffle_discard_pile` Function**
+
+```{r}
+shuffle_discard_pile  <- function(game_state){
+  game_state$Discard_Pile <- sample(game_state$Discard_Pile, replace = FALSE)
+  #Adds z-index to keep track of which card is on top
+  game_state$Discard_Pile$z_index <- seq_len(nrow(game_state$Discard_Pile))
+  return(game_state)
+}
+```
+
+**Example:**
+
+```{r}
+game <- initialize_game(num_cards = 6,number_of_players = 2, min_discard_pile = 2)
+shuffled_game <- game |> shuffle_discard_pile()
+#Print original discard pile
+game$Discard_Pile
+#Print shuffled discard pile
+shuffled_game$Discard_Pile
+```
+
+## **5. `play_card` Function**
+
+```{r}
+play_card <- function(game_state, player_id = "1") {
+  library(dplyr)
+  # Extract the discard pile and players' hands from game_state
+  discard_pile <- game_state$Discard_Pile
+  players_hands <- game_state$Players[[player_id]]
+  
+  # Grab the card on the highest z-index in the discard pile
+  top_card <- game_state$Discard_Pile[which.max(game_state$Discard_Pile$z_index), ]
+  
+  # Find playable cards based on the top card on the discard pile
+  top_card_values <- c(top_card$values_positive, top_card$values_negative)
+  
+  # Check if players_hands is not NULL before filtering
+  if (!is.null(players_hands)) {
+    playable_cards <- players_hands |>
+      filter(values_positive %in% top_card_values | values_negative %in% top_card_values)
+  } else {
+    playable_cards <- NULL
+  }
+  
+  if (!is.null(playable_cards) && nrow(playable_cards) > 0) {
+    # Select the first playable card
+    card_to_play <- playable_cards[1, ]
+    
+    # Remove the played card from the player's hand
+    players_hands_after <- players_hands |> 
+      filter(card_id != card_to_play$card_id)
+    
+    # Add the selected card to the discard pile
+    card_to_discard_pile <- card_to_play |> mutate(z_index = top_card$z_index + 1)
+    discard_pile_after <- bind_rows(card_to_discard_pile, discard_pile)
+    
+    # Update game_state with the modified discard pile and player's hand
+    game_state$Discard_Pile <- discard_pile_after
+    game_state$Players[[player_id]] <- players_hands_after
+    game_state$card_to_play <- "There a card to play"
+    output <- game_state
+  } else {
+    game_state$card_to_play <- "There is no possible play"
+    output <- game_state
+  }
+  return(output)
+}
+```
+
+**Example:**
+
+```{r}
+game <- initialize_game(num_cards = 10,number_of_players = 1,min_discard_pile = 1) |> shuffle_discard_pile()
+game_after_player1_turn <- game |> play_card()
+#Let's compare player1's hand before playing
+game$Players[["1"]]
+#After playing, player1's hand is changed!
+game_after_player1_turn$Players[["1"]]
+#Has there been any changes?
+!identical(game$Players[["1"]],game_after_player1_turn$Players[["1"]])
+#Yes, the players hand has changed
+
+```
+
+## **6. `simulate_game` Function**
+
+```{r}
+simulate_game <- function(game_state, player_id){
+  library(tictoc)
+  tic(quiet = T)
+  # Perform the first step
+  step1 <- play_card(game_state = game_state, player_id = player_id)
+  # Repeat until there is no possible play
+  repeat {
+    # Check if the card to play is "There is no possible play"
+    if (step1$card_to_play == "There is no possible play") {
+      # Exit the loop if there's no possible play
+      break
+    } else {
+      # Perform the next step
+      step1 <- play_card(game_state = step1, player_id = player_id)
+    }
+  }
+  step1[["time_taken"]] <- toc(quiet = T)
+  return(step1)
+}
+
+```
+
+**Example:**
+
+```{r}
+game <- initialize_game(num_cards = 10,number_of_players = 1,min_discard_pile = 1)|>shuffle_discard_pile()
+finished_game <- simulate_game(game_state = game,player_id = "1")
+
+
+#Let's compare the discard pile before playing
+game$Discard_Pile
+#After playing, discard pile will have changed!
+finished_game$Discard_Pile
+#Has there been any changes?
+!identical(game$Discard_Pile, finished_game$Discard_Pile)
+#Yes, the players has finished playing and the discard pile has new cards on top
+
+#We can also see how much time this to play this game took
+finished_game$time_taken
+
+```
+
+Implement each function with code examples and explanations. Use code blocks for clarity and include comments where necessary.
+
+## \*\* 7. Simulate and empty hand\*\*
+
+```{r}
+simulate_and_empty_hand <- function(game_state, player_id) {
+  library(tictoc)
+  tic(quiet = TRUE)
+  
+  while (TRUE) {
+    if (is.null(game_state$Players[[player_id]]) || nrow(game_state$Players[[player_id]]) == 0) {
+      break  # Exit the loop if the player's hand is empty
+    }
+    
+    game_state <- play_card(game_state = game_state, player_id = player_id)
+    
+    if (game_state$card_to_play == "There is no possible play") {
+      game_state <- shuffle_discard_pile(game_state)
+    }
+  }
+  
+  game_state[["time_taken"]] <- toc(quiet = TRUE)
+  return(game_state)
+}
+```
+
+# Simulation of a one-player game
+
+Perform the one player game simulation and track the time taken to empty the hand. Repeat the simulation 1 million times, generating a new set of cards each time. Use a time tracking package like tictoc. Calculate and display the average time taken for each run. Optionally, award an additional point for the best time.
+
+# Playing one time and reshuffling the discard pile
+
+```{r}
+game <- initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |> 
+      shuffle_discard_pile() |> 
+      simulate_and_empty_hand(player_id = "1")
+
+glimpse(game)
+```
+
+# Playing many times and reshuffling the discard pile
+
+```{r}
+# library(future)
+# library(furrr)
+# #Set up parallel processing
+# plan(strategy = multisession(workers =availableCores()-1))
+# n = 1
+# games_list <- future_map(1:n, ~ initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |> shuffle_discard_pile(),.options = furrr_options(seed = T,scheduling = 2, chunk_size = NULL))
+# #Play the games with vectorization
+# played_games <- future_map(games_list, ~ simulate_and_empty_hand(.x, "1"),.options = furrr_options(seed = T,scheduling = 2, chunk_size = NULL))
+```
+
+Average time it took to empty the hand
+
+```{r}
+# compute_times <- purrr::map_dbl(played_games, ~ .x$time_taken$toc - .x$time_taken$tic)
+# mean(compute_times)
+```
+
+# Playing one time without reshuffling the discard pile
+
+```{r}
+# game <- initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |> 
+#       shuffle_discard_pile() |> 
+#       simulate_game(player_id = "1")
+# 
+# glimpse(game)
+```
+
+# Playing many times without reshuffling the discard pile
+
+```{r}
+# n = 10
+# games_list <- purrr::map(1:n, ~ initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |> shuffle_discard_pile())
+# #Play the games with vectorization
+# played_games <- purrr::map(games_list, ~ simulate_game(.x, "1"))
+
+# library(future)
+# library(purrr)
+# Set up parallel processing
+# plan(strategy = multisession(workers =availableCores()-1))
+# n = 10
+# games_list <- future_map(1:n, ~ initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |> shuffle_discard_pile(),.options = furrr_options(seed = T,scheduling = 2, chunk_size = NULL))
+# #Play the games with vectorization
+# 
+# played_games <- future_map(games_list, ~ simulate_game(.x, "1"),.options = furrr_options(seed = T,scheduling = 2, chunk_size = NULL))
+
+
+```
+
+\
+Get the average compute time each game took
+
+```{r}
+# compute_times <- purrr::map_dbl(played_games, ~ .x$time_taken$toc - .x$time_taken$tic)
+# mean(compute_times)
+
+```
+
+# Conclusion
+
+Summarize the results and any observations made during the simulations. Mention any improvements or further enhancements that could be made to the code or simulation process.
+
+# Appendix (Optional)
+
+Include additional code snippets, data visualizations, or any supplementary information that adds value to the document. Tests \## Test 1
+
+```{r}
+library(bench)
+library(dplyr)
+#Which data structure is faster? Is it datatable, tible or dataframe ?
+num_reps <- 1e4
+n <- 73
+draw_n_cards_df <- function(n = 73){
+  #1. equal probability of drawing a card with numbers 1 trough 10
+  main_numbers <- round(runif(n = n,min = 1,max = 10))
+  #2. equal probability of drawing a card with absolute modifier values of1 trough 3
+  modifiers <- round(runif(n, min = 1, max = 3))
+  #3. Output Dataframe
+  output <- data.frame(main_numbers = main_numbers, modifiers = modifiers)
+  return(output)
+}
+draw_n_cards_tb <- function(n = 73){
+  library(dplyr)
+  #1. equal probability of drawing a card with numbers 1 trough 10
+  main_numbers <- round(runif(n = n,min = 1,max = 10))
+  #2. equal probability of drawing a card with absolute modifier values of1 trough 3
+  modifiers <- round(runif(n, min = 1, max = 3))
+  #3. Output Dataframe
+  output <- tibble(main_numbers = main_numbers, modifiers = modifiers)
+  return(output)
+}
+draw_n_cards_dt <- function(n = 73){
+  library(data.table)
+  #1. equal probability of drawing a card with numbers 1 trough 10
+  main_numbers <- round(runif(n = n,min = 1,max = 10))
+  #2. equal probability of drawing a card with absolute modifier values of1 trough 3
+  modifiers <- round(runif(n, min = 1, max = 3))
+  #3. Output Dataframe
+  output <- data.table(main_numbers = main_numbers, modifiers = modifiers)
+  return(output)
+}
+test <- bench::mark(
+  draw_n_cards_df(n = n),
+  draw_n_cards_tb(n = n),
+  draw_n_cards_dt(n = n),
+  iterations = num_reps,
+  check = FALSE
+)
+# test
+# Using df is the fastest
+```
+
+## Test 2
+
+```{r}
+num_reps <- 1e4
+n <- 73
+draw_n_cards_1 <- function(n = 73){
+  main_numbers <- round(runif(n = n,min = 1,max = 10))
+  modifiers <- round(runif(n, min = 1, max = 3))
+  output <- data.frame(main_numbers = main_numbers, modifiers = modifiers)
+  return(output)
+}
+draw_n_cards_2 <- function(n = 73){return(data.frame(main_numbers = round(runif(n = n,min = 1,max = 10)), modifiers = round(runif(n, min = 1, max = 3))))}
+# Benchmark the sample operation
+test <- bench::mark(
+  draw_n_cards_1(n),
+  draw_n_cards_2(n),
+  iterations = num_reps,
+  check = FALSE
+)
+#draw_n_cards_1 is better and more readable
+```
+
+## Test 3
+
+```{r}
+#Define the number of repetitions for the benchmark
+num_reps <- 3e4
+player_number = 2
+n_cards_on_deck = 73
+discard_pile_minimum = 1
+draw_n_cards_for_m_players <- function(player_number = 2, n_cards_on_deck = 73, discard_pile_minimum = 1){
+
+  #There's always one card on the discard pile
+  cards_to_discard_pile <- discard_pile_minimum
+  #After accounting for the card on the discard pile, theres a new number of available cards
+  available_cards <- n_cards_on_deck - cards_to_discard_pile
+  #Each player will be have the following cards
+  cards_for_each_player <- floor(available_cards/player_number)
+  #When there's an uneven number of platers,more cards will be added to the discard pile
+  cards_to_discard_pile <- cards_to_discard_pile + (available_cards %% player_number)
+
+  #Output= Vector that contains the number of cards for each player and for the discard pile
+  #0: to the discard pile
+  #1 to n: number of players
+  Vec <- c(rep(0, each = cards_to_discard_pile),
+           rep(1:player_number, each = cards_for_each_player))
+  return(Vec)
+}
+draw_n_cards_for_m_players_2 <- function(player_number = 2, n_cards_on_deck = 73, discard_pile_minimum = 1){
+  # Calculate the total number of cards excluding the discard pile
+  total_cards_excluding_discard <- n_cards_on_deck - discard_pile_minimum
+
+  # Calculate the number of cards for each player and the remaining cards for the discard pile
+  cards_per_player <- total_cards_excluding_discard %/% player_number
+  remaining_cards_for_discard <- total_cards_excluding_discard %% player_number + discard_pile_minimum
+
+  # Generate the vector indicating the number of cards for each player and the discard pile
+  Vec <- c(rep(0, times = remaining_cards_for_discard),
+           rep(1:player_number, each = cards_per_player))
+
+  return(Vec)
+}
+draw_n_cards_for_m_players_3 <- function(player_number = 2, n_cards_on_deck = 73, discard_pile_minimum = 1){
+
+  # Calculate the total number of cards excluding the discard pile
+  total_cards_excluding_discard <- n_cards_on_deck - discard_pile_minimum
+
+  # Calculate the number of cards for each player and the remaining cards for the discard pile
+  cards_per_player <- total_cards_excluding_discard %/% player_number
+  remaining_cards_for_discard <- n_cards_on_deck - cards_per_player*player_number
+
+  # Generate the vector indicating the number of cards for each player and the discard pile
+  Vec <- c(rep(0, times = remaining_cards_for_discard),
+           rep(1:player_number, each = cards_per_player))
+  return(Vec)
+}
+draw_n_cards_for_m_players_4 <- function(player_number = 2, n_cards_on_deck = 73, discard_pile_minimum = 1){
+  # Calculate the total number of cards excluding the discard pile
+  total_cards_excluding_discard <- n_cards_on_deck - discard_pile_minimum
+
+  # Calculate the number of cards for each player and the remaining cards for the discard pile
+  cards_per_player <- total_cards_excluding_discard %/% player_number
+  remaining_cards_for_discard <- total_cards_excluding_discard %% player_number
+
+  # Generate the vector indicating the number of cards for each player and the discard pile
+  Vec <- c(rep(0, times = discard_pile_minimum),
+           rep(1:player_number, each = cards_per_player))
+
+  # Add remaining cards to the discard pile
+  Vec[1:remaining_cards_for_discard] <- 0
+
+  return(Vec)
+}
+
+test <- bench::mark(
+  draw_n_cards_for_m_players(player_number = player_number,n_cards_on_deck =n_cards_on_deck, discard_pile_minimum = discard_pile_minimum),
+  draw_n_cards_for_m_players_2(player_number = player_number,n_cards_on_deck =n_cards_on_deck, discard_pile_minimum = discard_pile_minimum),
+  draw_n_cards_for_m_players_3(player_number = player_number,n_cards_on_deck =n_cards_on_deck, discard_pile_minimum = discard_pile_minimum),
+  draw_n_cards_for_m_players_4(player_number = player_number,n_cards_on_deck =n_cards_on_deck, discard_pile_minimum = discard_pile_minimum),
+  iterations = num_reps,
+  check = FALSE
+)
+# test
+# the third version is the fastest, We will select this one
+```
+
+## Test 4
+
+```{r}
+num_reps <- 1e3
+n <- 73
+fn_anon <- function(n_cards_on_deck = 73, number_of_players = 2, initial_discard_pile = 1){
+  #Generate 73 cards
+  df <- draw_n_cards(n = n_cards_on_deck)
+  #Decide which cards are to whom
+  card_holder <- draw_n_cards_for_m_players(player_number = number_of_players,n_cards_on_deck = n_cards_on_deck,discard_pile_minimum = initial_discard_pile)
+  #Assign the cards to each card holder
+  df <- df |> dplyr::mutate(
+    card_holder = card_holder,
+    type = ifelse(card_holder == 0, "Discard_Pile", "Player")
+  )
+
+  #Split discard pile and players
+  df_discard_pile <- df |> dplyr::filter(type == "Discard_Pile")
+  df_players <- df |> dplyr::filter(type != "Discard_Pile")
+  #Split the players hand into a list
+  df_players_list <- split(df_players, df_players$card_holder)
+  #output: join the discard pile and the players list (that contains a df = this players hand)
+  output <- list("Discard_Pile" = df_discard_pile,
+                 "Players" = df_players_list)
+  return(output)
+}
+fn_anon_1 <- function(n_cards_on_deck = 73, number_of_players = 2, initial_discard_pile = 1){
+  # Generate 73 cards
+  df <- draw_n_cards(n = n_cards_on_deck)
+
+  # Decide which cards are assigned to whom
+  card_holder <- draw_n_cards_for_m_players(player_number = number_of_players, n_cards_on_deck = n_cards_on_deck, discard_pile_minimum = initial_discard_pile)
+
+  # Combine mutations and filter in one step
+  df <- df %>%
+    mutate(
+      card_holder = card_holder,
+      type = ifelse(card_holder == 0, "Discard_Pile", "Player")
+    )
+
+  # Split the dataframe into discard pile and players
+  df_split <- df %>%
+    filter(type != "Discard_Pile") %>%
+    group_split(card_holder)
+
+  # Create output list with discard pile and players' hands
+  output <- list(
+    "Discard_Pile" = df %>%
+      filter(type == "Discard_Pile"),
+    "Players" = df_split
+  )
+
+  return(output)
+}
+fn_anon_2 <- function(n_cards_on_deck = 73, number_of_players = 2, initial_discard_pile = 1){
+  # Generate 73 cards
+  df <- draw_n_cards(n = n_cards_on_deck)
+
+  # Decide which cards are assigned to whom
+  card_holder <- draw_n_cards_for_m_players(player_number = number_of_players, n_cards_on_deck = n_cards_on_deck, discard_pile_minimum = initial_discard_pile)
+
+  # Group the dataframe by card_holder and split into list
+  df <- cbind(df,card_holder)
+  df_split <- df %>%
+    group_by(card_holder) %>%
+    group_split()
+
+  # Create output list with discard pile and players' hands
+  output <- list(
+    "Discard_Pile" = df_split[[1]],  # First group corresponds to discard pile (card_holder = 0)
+    "Players" = df_split[-1]  # Rest of the groups correspond to players
+  )
+
+  return(output)
+}
+fn_anon_3 <- function(n_cards_on_deck = 73, number_of_players = 2, initial_discard_pile = 1){
+  # Generate 73 cards
+  df <- draw_n_cards(n = n_cards_on_deck)
+
+  # Decide which cards are assigned to whom
+  card_holder <- draw_n_cards_for_m_players(player_number = number_of_players, n_cards_on_deck = n_cards_on_deck, discard_pile_minimum = initial_discard_pile)
+
+  # Group the dataframe by card_holder and split into list
+  df_split <- split(df, card_holder)
+
+  # Create output list with discard pile and players' hands
+  output <- list(
+    "Discard_Pile" = df_split[[1]],  # Using [[0]] for the discard pile (card_holder = 0)
+    "Players" = df_split[-1]  # Rest of the groups correspond to players
+  )
+
+  return(output)
+}
+n_cards_on_deck = 73
+player_number = 2
+initial_discard_pile = 1
+# Benchmark the sample operation
+test <- bench::mark(
+  fn_anon(number_of_players = player_number,n_cards_on_deck =n_cards_on_deck, initial_discard_pile = initial_discard_pile),
+  fn_anon_1(number_of_players = player_number,n_cards_on_deck =n_cards_on_deck, initial_discard_pile = initial_discard_pile),
+  fn_anon_2(number_of_players = player_number,n_cards_on_deck =n_cards_on_deck, initial_discard_pile = initial_discard_pile),
+  fn_anon_3(number_of_players = player_number,n_cards_on_deck =n_cards_on_deck, initial_discard_pile = initial_discard_pile),
+  iterations = num_reps,
+  check = FALSE
+)
+#fn_anon_3 is by far the fastest one
+```
+
+## Test 5
+
+```{r}
+# Define the number of repetitions for the benchmark
+num_reps <- 1e4
+n <- 73
+df_list = game_before_shuffling
+suffle_discard_pile <- function(df_list){
+  original <- df_list$Discard_Pile
+  original_shuffled <- sample(original, replace = FALSE)
+  original_shuffled <- data.frame(original_shuffled, z_index = seq_along(original_shuffled$main_numbers))
+  df_list$Discard_Pile <- original_shuffled
+  return(df_list)
+}
+suffle_discard_pile_2 <- function(df_list){
+  # Shuffle the discard pile and add a z-index column
+  df_list$Discard_Pile <- sample(df_list$Discard_Pile, replace = FALSE)
+  df_list$Discard_Pile$z_index <- seq_len(nrow(df_list$Discard_Pile))
+  return(df_list)
+}
+suffle_discard_pile_3 <- function(df_list){
+  # Shuffle the discard pile and add a z-index column
+  df_list$Discard_Pile <- df_list$Discard_Pile %>%
+    sample_frac(1) %>%
+    mutate(z_index = row_number())
+
+  return(df_list)
+  return(df_list)
+}
+
+test <- bench::mark(
+  suffle_discard_pile(df_list = df_list),
+  suffle_discard_pile_2(df_list = df_list),
+  suffle_discard_pile_3(df_list = df_list),
+  iterations = num_reps,
+  check = FALSE
+)
+test
+#the second implementation is the fastest
+```
+
+## Test 6
+
+```{r}
+# Define the number of repetitions for the benchmark
+num_reps <- 1e4
+n <- 73
+game_setup = game_after_shuffling
+
+# Benchmark the sample operation
+test <- bench::mark(
+  game_setup$Discard_Pile[which.max(game_setup$Discard_Pile$z_index), ],
+  slice_max(game_setup$Discard_Pile, order_by = z_index, n = 1),
+  iterations = num_reps,
+  check = FALSE
+)
+# test
+```
