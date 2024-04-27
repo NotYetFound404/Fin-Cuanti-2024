@@ -259,89 +259,45 @@ finished_game$time_taken
 
 Implement each function with code examples and explanations. Use code blocks for clarity and include comments where necessary.
 
+## 7. Simulate and empty hand
+
+```{r}
+simulate_and_empty_hand <- function(game_state, player_id) {
+  library(tictoc)
+  tic(quiet = TRUE)
+  
+  while (TRUE) {
+    if (is.null(game_state$Players[[player_id]]) || nrow(game_state$Players[[player_id]]) == 0) {
+      break  # Exit the loop if the player's hand is empty
+    }
+    
+    game_state <- play_card(game_state = game_state, player_id = player_id)
+    
+    if (game_state$card_to_play == "There is no possible play") {
+      game_state <- shuffle_discard_pile(game_state)
+    }
+  }
+  
+  game_state[["time_taken"]] <- toc(quiet = TRUE)
+  return(game_state)
+}
+```
+
 # Simulation of a one-player game
 
 Perform the one player game simulation and track the time taken to empty the hand. Repeat the simulation 1 million times, generating a new set of cards each time. Use a time tracking package like tictoc. Calculate and display the average time taken for each run. Optionally, award an additional point for the best time.
 
-**Aditional functions**
-
-```{r}
-check_deadlock <- function(game_state, player_id = "1") {
-  # Extract the discard pile and player's hand from the game state
-  discard_pile <- game_state$Discard_Pile
-  players_hands <- game_state$Players[[player_id]]
-  
-  # Extract the values of the discard pile card
-  discard_pile_values <- c(discard_pile$values_positive, discard_pile$values_negative)
-  
-  # Extract the values from my hand
-  my_hands_values <- c(players_hands$values_positive, players_hands$values_negative)
-  
-  # Return TRUE if there are no playable cards, FALSE if there are playable cards
-  return(!any(my_hands_values %in% discard_pile_values))
-}
-
-
-#game_state = game
-#player_id = "1"
-simulate_game_v3 <- function(game_state, player_id){
-  library(tictoc)
-  tic(quiet = TRUE)
-  
-  # Perform the first step
-  step1 <- play_card(game_state = game_state, player_id = player_id)
-  
-  # Initialize the flag for deadlock
-  deadlock_flag <- FALSE
-  
-  # Repeat until there is no possible play
-  repeat {
-    # Check if player's hand is empty
-    if (is.null(step1$Players[[player_id]]) || nrow(step1$Players[[player_id]]) == 0) {
-      message("Player's hand is empty.")
-      break  # Exit the loop if player's hand is empty
-    }
-    
-    
-    # Check if it is possible to play a card
-    if (step1$card_to_play == "There a card to play") {
-      # Play a card
-      step1 <- play_card(game_state = step1, player_id = player_id)
-      next  # Skip the rest of the loop iteration
-    }
-    
-    # Check if there could be a deadlock
-    if (check_deadlock(game_state = step1, player_id = player_id)) {
-      # Set the deadlock flag and stop playing
-      deadlock_flag <- TRUE
-      break
-    }
-    
-    # In case there is no deadlock, reshuffle the discard pile
-    step1 <- shuffle_discard_pile(step1)
-  }
-  
-  step1[["time_taken"]] <- toc(quiet = TRUE)
-  
-  # Add the information about deadlock to the game state
-  step1$was_there_deadlock <- deadlock_flag
-  
-  return(step1)
-}
-```
-
-# Playing one time
+# Playing one time and reshuffling the discard pile
 
 ```{r}
 game <- initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |> 
-      shuffle_discard_pile()
+      shuffle_discard_pile() |> 
+      simulate_and_empty_hand(player_id = "1")
 
-
-
-played_game <- game |> simulate_game_v3(player_id = "1")
+glimpse(game)
 ```
 
-# Playing many times
+# Playing many times and reshuffling the discard pile
 
 ```{r}
 # library(future)
@@ -359,6 +315,46 @@ Average time it took to empty the hand
 ```{r}
 # compute_times <- purrr::map_dbl(played_games, ~ .x$time_taken$toc - .x$time_taken$tic)
 # mean(compute_times)
+```
+
+# Playing one time without reshuffling the discard pile
+
+```{r}
+# game <- initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |> 
+#       shuffle_discard_pile() |> 
+#       simulate_game(player_id = "1")
+# 
+# glimpse(game)
+```
+
+# Playing many times without reshuffling the discard pile
+
+```{r}
+# n = 10
+# games_list <- purrr::map(1:n, ~ initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |> shuffle_discard_pile())
+# #Play the games with vectorization
+# played_games <- purrr::map(games_list, ~ simulate_game(.x, "1"))
+
+# library(future)
+# library(purrr)
+# Set up parallel processing
+# plan(strategy = multisession(workers =availableCores()-1))
+# n = 10
+# games_list <- future_map(1:n, ~ initialize_game(num_cards = 73, number_of_players = 1, min_discard_pile = 1) |> shuffle_discard_pile(),.options = furrr_options(seed = T,scheduling = 2, chunk_size = NULL))
+# #Play the games with vectorization
+# 
+# played_games <- future_map(games_list, ~ simulate_game(.x, "1"),.options = furrr_options(seed = T,scheduling = 2, chunk_size = NULL))
+
+
+```
+
+\
+Get the average compute time each game took
+
+```{r}
+# compute_times <- purrr::map_dbl(played_games, ~ .x$time_taken$toc - .x$time_taken$tic)
+# mean(compute_times)
+
 ```
 
 # Conclusion
