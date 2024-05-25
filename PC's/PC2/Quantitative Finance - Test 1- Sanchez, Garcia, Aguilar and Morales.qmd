@@ -38,6 +38,7 @@ library(tidyverse)
 library(tidyquant)
 library(timetk)
 library(rugarch)
+library(tseries)
 ```
 
 Then, we'll load some helper functions.
@@ -130,7 +131,7 @@ We will download the dataset from the following link: [Crypto dataset](https://w
 df <- read.csv("C:/Users/RYZEN7/Desktop/crypto-markets.csv")
 ```
 
-#2. The strategy will start with analyzing the main crypto by market cap so filter only for that one
+# 2. The strategy will start with analyzing the main crypto by market cap so filter only for that one
 
 ```{r}
 # Calculate the average market capitalization for each symbol in each year
@@ -150,7 +151,7 @@ BTc <- df %>% filter(symbol == highestMarketCap) %>% mutate(date = date(date))
 rm(yearly_avg_market_cap,overall_avg_market_cap,df)
 ```
 
-#3. You can choose the frequency of data you want to work with (daily, weekly, monthly, etc). Explain why
+# 3. You can choose the frequency of data you want to work with (daily, weekly, monthly, etc). Explain why
 
 We will work with daily data because it provides more detailed information about the price movements of the cryptocurrency.
 
@@ -163,13 +164,13 @@ BTC.dailyRet <- BTc %>%
                type = 'log')
 ```
 
-#4. Split the data into training and test. Last date of training should be 2017-05-31.
+# 4. Split the data into training and test. Last date of training should be 2017-05-31.
 
 ```{r}
 BTC.split <- train_test_split_cutoff(BTC.dailyRet, date, '2017-05-31')
 ```
 
-#5. Plot the data and explain the characteristics this process displays.
+# 5. Plot the data and explain the characteristics this process displays.
 
 ```{r}
 # Plot the time series of the closing price of the cryptocurrency
@@ -186,33 +187,50 @@ plot(BTC.split$test.xts, main = "BTC Daily returns (test)", col = "red")
 
 ```
 
-#6. Do the necessary transformations to get a stationary time series.
-#testing for stationarity
+# 6. Do the necessary transformations to get a stationary time series.
 
-#taking the first diference
-
-
-
-
-```{r}
-# Plot the time series of the closing price of the cryptocurrency
-plot_ts(BTC.split$data.df, date, close, "Time Series of Bitcoin Closing Price", "Date", "Closing Price (USD)")
-plot_ts(BTC.split$train.df, date, close, "Time Series of Bitcoin Closing Price (Training Data)", "Date", "Closing Price (USD)")
-plot_ts(BTC.split$test.df, date, close, "Time Series of Bitcoin Closing Price (Test Data)", "Date", "Closing Price (USD)")
-```
+Testing if the dataset is stationarity
 
 ```{r}
 # Augmented Dickey-Fuller test for stationarity
-adf.test(BTC.split$train.xts$close)
+adf.test(BTC.split$data.xts)
 ```
 
-```{r}
-# First difference
-BTC.diff <- diff(BTC.split$train.xts$close)
-plot(tk_tbl(BTC.diff), main="Time Series of Bitcoin Closing Price (First Difference)", "Date", "Closing Price (USD)")
-```
+Testing if the training set is stationarity
 
 ```{r}
 # Augmented Dickey-Fuller test for stationarity
-adf.test(BTC.diff)
+adf.test(BTC.split$train.xts)
 ```
+
+Testing if the dataset is stationarity
+
+```{r}
+# Augmented Dickey-Fuller test for stationarity
+adf.test(BTC.split$test.xts)
+```
+
+# 7. Try and fit several SARIMA GARCH models
+
+Getting the actuals. Will be used for smape
+```{r}
+actuals <- BTC.split$test.xts
+```
+
+
+Grid-searching the best models
+```{r}
+ar_search = 0:1; ma_search = c(0:1); search_gar = 0:1; search_arch = 0:1; objective_time_series <- BTC.split$train.xts; forecast_steps = length(BTC.split$test.xts)
+
+models <- expand.grid(gar = search_gar, arch = search_arch, ar =ar_search, ma = ma_search) %>%
+  rowwise() %>%
+  mutate(
+    model_spec = list(ugarchspec(variance.model = list(garchOrder=c(gar,arch)), 
+                                 mean.model = list(armaOrder=c(ar,ma)))),
+    model_fit = list(ugarchfit(spec = model_spec, data = objective_time_series, solver = "hybrid")),
+    model_forecast = list(ugarchforecast(fitORspec = model_fit, n.ahead = forecast_steps)),
+    smape = smape(a = actuals, f = model_forecast@forecast$seriesFor[[1]])
+  )
+
+```
+
