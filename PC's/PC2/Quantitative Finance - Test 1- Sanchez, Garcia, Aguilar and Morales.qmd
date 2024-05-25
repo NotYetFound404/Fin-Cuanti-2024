@@ -1,15 +1,44 @@
-#-------------------
+---
+title: "Time Series Analysis and Forecasting"
+author: 
+  - name: Alicia Sanchez Alberca
+  - name: César García Asto
+  - name: Daniel Aguilar Paucar
+  - name: Giuliano Morales Moreyra
+format: 
+  html:
+    toc: true
+    toc_depth: 6
+    embed-resources: true
+    code-fold: show
+    error: false
+    warning: false
+    code-tools: true
+    code-copy: true
+    df-print: paged
+    code-overflow: wrap
+    code-line-numbers: true
+    theme: simplex
+    fontsize: 1.2em
+    linestretch: 1.7
+    mainfont: Helvetica Neue, Helvetica, Arial, sans
+    monofont: Cascadia Mono, Menlo, Consolas, Courier New, Courier
+    backgroundcolor: "white"
+    fontcolor: "black"
+editor: visual
+output: true
+---
+
+# Setup
+First, we need to load the necessary libraries for the analysis.
+```{r}
 library(tidyverse)
 library(tidyquant)
 library(timetk)
-
-
 library(rugarch)
-# library(car)
-# library(FinTS)
-# library(gridExtra)
-# library(forecast)
-#-------------------
+```
+Then, we'll load some helper functions.
+```{r}
 smape <- function(a, f) {  return (1/length(a) * sum(2*abs(f-a) / (abs(a)+abs(f))*100))}
 train_test_split_cutoff <- function(data, date_col, cutoff_date) {
   library(timetk)
@@ -86,10 +115,19 @@ plot_ts <- function(data, x_col, y_col, plot_title = "Time series plot", x_label
     scale_x_date(date_breaks =date_breaks, date_labels = date_format) + 
     theme_minimal()
 }
-#1--------------
+```
+# 1.  Download and load the crypto dataset
+We will download the dataset from the following link: [Crypto dataset](https://www.kaggle.com/sudalairajkumar/cryptocurrencypricehistory).
+The dataset contains historical data on the price of cryptocurrencies.
+```{r}
 # Replace 'path/to/your/file.csv' with the actual path to your CSV file
 df <- read.csv("C:/Users/RYZEN7/Desktop/crypto-markets.csv")
-#2--------------
+```
+
+
+#2. The strategy will start with analyzing the main crypto by market cap so filter only for that one
+
+```{r}
 # Calculate the average market capitalization for each symbol in each year
 yearly_avg_market_cap <- df %>%
   mutate(year = year(ymd(date))) %>%
@@ -105,29 +143,27 @@ overall_avg_market_cap <- yearly_avg_market_cap %>%
 highestMarketCap <- overall_avg_market_cap[[1]][[1]]
 BTc <- df %>% filter(symbol == highestMarketCap) %>% mutate(date = date(date))
 rm(yearly_avg_market_cap,overall_avg_market_cap,df)
-#3. ----------------
+```
+
+#3. You can choose the frequency of data you want to work with (daily, weekly, monthly, etc). Explain why
+
+We will work with daily data because it provides more detailed information about the price movements of the cryptocurrency.
+```{r}
 BTC.dailyRet <- BTc %>%
   tq_transmute(select = close,
                mutate_fun = periodReturn,
                period = 'daily',
                col_rename = 'ret',
                type = 'log')
-#4.---------------------
+# Plot the time series of the closing price of the cryptocurrency
+plot_ts(BTc, date, close, "Time Series of Bitcoin Closing Price", "Date", "Closing Price (USD)")
+plot(tk_xts(BTC.dailyRet), main = "BTC Daily Returns")
+```
+#4. Split the data into training and test. Last date of training should be 2017-05-31.
+
+```{r}
 BTC.split <- train_test_split_cutoff(BTC.dailyRet, date, '2017-05-31')
-#5.---------------------
-plot_ts(BTC.split$data.df, date, ret, "BTC Daily Returns", "Date", "Log Returns", "1 month", "%m-%Y")
-#7.---------------------
-# actuals
-actuals <- BTC.split$test.xts
-# fit a garch with sarima---
-search_gar = 0:1; search_arch = 0:1; objective_time_series <- BTC.split$train.xts; forecast_steps = length(BTC.split$test.xts)
-models <- expand.grid(gar = search_gar, arch = search_arch, ar = c(0:1), ma = c(0:1)) %>%
-  rowwise() %>%
-  mutate(
-    model_spec = list(ugarchspec(variance.model = list(garchOrder=c(gar,arch)), 
-                                 mean.model = list(armaOrder=c(ar,ma)))),
-    model_fit = list(ugarchfit(spec = model_spec, data = objective_time_series, solver = "hybrid")),
-    model_forecast = list(ugarchforecast(fitORspec = model_fit, n.ahead = forecast_steps)),
-    smape = smape(a = actuals, f = model_forecast@forecast$seriesFor[[1]])
-  )
+```
+
+Plot the data and explain the characteristics this process displays.
 
