@@ -234,3 +234,26 @@ models <- expand.grid(gar = search_gar, arch = search_arch, ar =ar_search, ma = 
 
 ```
 
+
+Plot the forecasts vs the test data of the model with the highest smape
+```{r}
+# best_model <- models[which.min(models$smape),]
+# forecasts_bSMAPE <- best_model$model_forecast[[1]]@forecast$seriesFor
+# forecasts_bSMAPE.df <- data.frame(
+#   ret = as.numeric(forecasts_bSMAPE),
+#   date = index(BTC.split$test.xts)
+# )
+# # plot the forecasts and the test data
+# ggplot() +
+#   geom_line(data = BTC.split$test.df, aes(x = date, y = ret), color = "blue") +
+#   geom_line(data = forecasts_bSMAPE.df, aes(x = date, y = ret), color = "red") +
+#   labs(title = "Forecasts vs Test Data",
+#        x = "Date",
+#        y = "Returns") +
+#   theme_minimal()
+```
+
+
+
+
+
