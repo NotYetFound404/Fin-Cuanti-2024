@@ -30,14 +30,18 @@ output: true
 ---
 
 # Setup
+
 First, we need to load the necessary libraries for the analysis.
+
 ```{r}
 library(tidyverse)
 library(tidyquant)
 library(timetk)
 library(rugarch)
 ```
+
 Then, we'll load some helper functions.
+
 ```{r}
 smape <- function(a, f) {  return (1/length(a) * sum(2*abs(f-a) / (abs(a)+abs(f))*100))}
 train_test_split_cutoff <- function(data, date_col, cutoff_date) {
@@ -116,14 +120,15 @@ plot_ts <- function(data, x_col, y_col, plot_title = "Time series plot", x_label
     theme_minimal()
 }
 ```
-# 1.  Download and load the crypto dataset
-We will download the dataset from the following link: [Crypto dataset](https://www.kaggle.com/sudalairajkumar/cryptocurrencypricehistory).
-The dataset contains historical data on the price of cryptocurrencies.
+
+# 1. Download and load the crypto dataset
+
+We will download the dataset from the following link: [Crypto dataset](https://www.kaggle.com/sudalairajkumar/cryptocurrencypricehistory). The dataset contains historical data on the price of cryptocurrencies.
+
 ```{r}
 # Replace 'path/to/your/file.csv' with the actual path to your CSV file
 df <- read.csv("C:/Users/RYZEN7/Desktop/crypto-markets.csv")
 ```
-
 
 #2. The strategy will start with analyzing the main crypto by market cap so filter only for that one
 
@@ -148,6 +153,7 @@ rm(yearly_avg_market_cap,overall_avg_market_cap,df)
 #3. You can choose the frequency of data you want to work with (daily, weekly, monthly, etc). Explain why
 
 We will work with daily data because it provides more detailed information about the price movements of the cryptocurrency.
+
 ```{r}
 BTC.dailyRet <- BTc %>%
   tq_transmute(select = close,
@@ -155,15 +161,58 @@ BTC.dailyRet <- BTc %>%
                period = 'daily',
                col_rename = 'ret',
                type = 'log')
-# Plot the time series of the closing price of the cryptocurrency
-plot_ts(BTc, date, close, "Time Series of Bitcoin Closing Price", "Date", "Closing Price (USD)")
-plot(tk_xts(BTC.dailyRet), main = "BTC Daily Returns")
 ```
+
 #4. Split the data into training and test. Last date of training should be 2017-05-31.
 
 ```{r}
 BTC.split <- train_test_split_cutoff(BTC.dailyRet, date, '2017-05-31')
 ```
 
-Plot the data and explain the characteristics this process displays.
+#5. Plot the data and explain the characteristics this process displays.
 
+```{r}
+# Plot the time series of the closing price of the cryptocurrency
+plot_ts(BTc, date, close, "Time Series of Bitcoin Closing Price", "Date", "Closing Price (USD)")
+
+#plot the daily returns
+plot(tk_xts(BTC.dailyRet), main = "BTC Daily Returns")
+
+#plot the train
+plot(BTC.split$train.xts, main = "BTC Daily returns (train)", col = "blue")
+
+#plot the test
+plot(BTC.split$test.xts, main = "BTC Daily returns (test)", col = "red")
+
+```
+
+#6. Do the necessary transformations to get a stationary time series.
+#testing for stationarity
+
+#taking the first diference
+
+
+
+
+```{r}
+# Plot the time series of the closing price of the cryptocurrency
+plot_ts(BTC.split$data.df, date, close, "Time Series of Bitcoin Closing Price", "Date", "Closing Price (USD)")
+plot_ts(BTC.split$train.df, date, close, "Time Series of Bitcoin Closing Price (Training Data)", "Date", "Closing Price (USD)")
+plot_ts(BTC.split$test.df, date, close, "Time Series of Bitcoin Closing Price (Test Data)", "Date", "Closing Price (USD)")
+```
+
+```{r}
+# Augmented Dickey-Fuller test for stationarity
+adf.test(BTC.split$train.xts$close)
+```
+
+```{r}
+# First difference
+BTC.diff <- diff(BTC.split$train.xts$close)
+plot(tk_tbl(BTC.diff), main="Time Series of Bitcoin Closing Price (First Difference)", "Date", "Closing Price (USD)")
+```
+
+```{r}
+# Augmented Dickey-Fuller test for stationarity
+adf.test(BTC.diff)
+```
