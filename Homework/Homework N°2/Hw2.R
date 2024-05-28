@@ -159,3 +159,18 @@ simulated_returns <- ugarchsim(garch_fit, n.sim = n_steps)
 # str(simulated_prices)
 # #plot
 # plot(simulated_prices, type = "l", col = "blue", lwd = 2, main = "Simulated Prices from GARCH(1,1) Model", xlab = "Time", ylab = "Price")
+
+
+#Historic data summary
+#para el quarterly data
+appreciation <- quarterly.63days.mean.ret[quarterly.63days.mean.ret>0]
+
+hist(appreciation)
+mean(appreciation)
+quantile(appreciation, probs = c(0.5, 0.75, 0.9, 0.95, 0.99))
+
+depreciation <- quarterly.63days.mean.ret[quarterly.63days.mean.ret<0]
+hist(depreciation)
+mean(depreciation)
+quantile(depreciation, probs = c(1-0.5, 1- 0.75, 1- 0.9, 1- 0.95, 1-0.99))
+
