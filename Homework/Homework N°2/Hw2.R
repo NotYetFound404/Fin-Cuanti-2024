@@ -24,6 +24,11 @@ library(lubridate)
 library(tidyverse)
 library(quantmod)
 library(ggplot2)
+
+library(tseries)
+library(forecast)
+
+library(rugarch)
 #0--------------
 #support functions
 # Define the function to translate the date and convert it to a Date type
@@ -94,3 +99,63 @@ chart_Series(semesterly.126days.mean)
 
 #garch fit and simulation (1000)
 
+#1. Calculate log returns from mean prices of weekly.5days.mean
+quarterly.63days.mean.ret <- diff(log(quarterly.63days.mean))
+quarterly.63days.mean.ret <- quarterly.63days.mean.ret[-1,]
+
+# stationarity check
+plot(quarterly.63days.mean.ret)
+adf.test(quarterly.63days.mean.ret)
+
+# ACF plot of log returns
+acf(quarterly.63days.mean.ret, main = "Autocorrelation Function (ACF) of Log Returns")
+
+# PACF plot of log returns
+pacf(quarterly.63days.mean.ret, main = "Partial Autocorrelation Function (PACF) of Log Returns")
+
+
+# Fit GARCH(1,1) model (example)
+garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+                         mean.model = list(armaOrder = c(0, 0)))
+garch_fit <- ugarchfit(spec = garch_spec, data = quarterly.63days.mean.ret)
+# Volatility clustering plot
+plot(garch_fit, which = "all")
+
+
+#Model Selection Criteria
+infocriteria(garch_fit)
+
+
+
+residuals(garch_fit)
+
+?infocriteria
+
+## Sensitivity analysis (varying GARCH orders) #necesita correr el modelo con grid search para tener mejores fits
+garch_orders <- c(1:3)
+for (p in garch_orders) {
+  for (q in garch_orders) {
+    garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(p, q)),
+                             mean.model = list(armaOrder = c(0, 0)))
+    garch_fit <- ugarchfit(spec = garch_spec, data = quarterly.63days.mean.ret)
+    print(paste("AIC for GARCH(", p, ",", q, "):", infocriteria(garch_fit)[1]))
+  }
+}
+
+#foward sim
+# Fit GARCH(1,1) model (asumming best model)
+garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+                         mean.model = list(armaOrder = c(0, 0)))
+garch_fit <- ugarchfit(spec = garch_spec, data = log_returns)
+
+# Perform forward simulation
+n_steps <- 50  # Number of steps for simulation
+simulated_returns <- ugarchsim(garch_fit, n.sim = n_steps)
+
+
+# str(simulated_returns)
+# # Convert the simulated returns to prices
+# simulated_prices <- exp(cumsum(simulated_returns))
+# str(simulated_prices)
+# #plot
+# plot(simulated_prices, type = "l", col = "blue", lwd = 2, main = "Simulated Prices from GARCH(1,1) Model", xlab = "Time", ylab = "Price")
