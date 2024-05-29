@@ -18,99 +18,6 @@
 #     low = min(TC, na.rm = TRUE),
 #     close = last(TC, na.rm = TRUE)
 #   )
-#------------
-#libraries
-library(lubridate)
-library(tidyverse)
-library(quantmod)
-library(ggplot2)
-
-library(tseries)
-library(forecast)
-
-library(rugarch)
-library(tidyquant)
-#0--------------
-#support functions
-# Define the function to translate the date and convert it to a Date type
-convert_date <- function(date_string) {
-  # Translate the Spanish month abbreviations to English
-  date_string <- gsub("Ene", "Jan", date_string)
-  date_string <- gsub("Feb", "Feb", date_string)
-  date_string <- gsub("Mar", "Mar", date_string)
-  date_string <- gsub("Abr", "Apr", date_string)
-  date_string <- gsub("May", "May", date_string)
-  date_string <- gsub("Jun", "Jun", date_string)
-  date_string <- gsub("Jul", "Jul", date_string)
-  date_string <- gsub("Ago", "Aug", date_string)
-  date_string <- gsub("Set", "Sep", date_string)
-  date_string <- gsub("Oct", "Oct", date_string)
-  date_string <- gsub("Nov", "Nov", date_string)
-  date_string <- gsub("Dic", "Dec", date_string)
-  
-  # Parse the modified date string into a Date object
-  return(date_string)
-}
-#1------------------
-#Load data + Data cleaning
-
-#read tc interbancario
-df <- read.csv("Homework/Homework N°2/TC_interbancarioSBS_venta_BCRP.csv", header = TRUE)
-#delete first row of df
-df <- df[-1,]
-#rename colums to TC and date
-colnames(df) <- c("date", "TC")
-# Apply the function to the 'date' column
-df$date <- sapply(df$date, convert_date)
-# convert to date, turn numeric, filter date from 2007 onwards
-df <- df %>% 
-  mutate(Date = dmy(date),
-         TC = ifelse(TC == "n.d", NA, as.numeric(TC))) %>%
-  filter(Date >= "2007-01-01", complete.cases(TC))
-#glimpse(df)
-
-#plot with ggplot
-# ggplot(df, aes(x=Date, y=TC)) + geom_line() + labs(title = "Tipo de cambio interbancario", x = "Fecha", y = "Tipo de cambio") + theme_minimal()
-df.xts <- xts(df$TC, order.by = df$Date)
-#plot with quantmod
-chart_Series(df.xts)
-
-daily.Ret <- df %>%
-  tq_transmute(
-    select = TC,
-    mutate_fun = periodReturn,
-    period = "daily",
-    type = "log"
-  )
-daily.Ret.xts <- xts(daily.Ret$daily.returns, order.by = df$Date)
-#----------------
-#Check stationarity for daily returns xts
-plot(daily.Ret.xts)
-adf.test(daily.Ret.xts)
-
-#Asumiendo que el mejor garch es 1,1
-garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
-                         mean.model = list(armaOrder = c(0, 0)))
-garch_fit <- ugarchfit(spec = garch_spec, data = daily.Ret.xts)
-
-simulations <- ugarchsim(garch_fit, n.sim = 10, m.sim = 2)
-#nsim is the steps of the simulation, m.sim is the number of simulations
-
-test <- simulations@simulation$seriesSim
-#each col is a mc simulation
-#each row is the time step
-
-# Extract positive returns
-positive_returns <- test[test > 0]
-# Compute the mean of the positive returns
-mean_positive <- mean(positive_returns)
-mean_positive
-# Compute the 40th quantile of the positive returns
-quantile_40 <- quantile(positive_returns, probs = c(0.5, 0.75, 0.9, 0.95, 0.99))
-quantile_40
-
-
-#x------------------
 # #turning data to specified periodicity
 # #turn and plot using OHLC data
 # weekly.ohlc <- to.period(df.xts, period = "weeks", OHLC = TRUE)
@@ -207,3 +114,141 @@ quantile_40
 # # mean(depreciation)
 # # quantile(depreciation, probs = c(1-0.5, 1- 0.75, 1- 0.9, 1- 0.95, 1-0.99))
 # 
+
+#------------
+#libraries
+library(lubridate)
+library(tidyverse)
+library(quantmod)
+library(ggplot2)
+
+library(tseries)
+library(forecast)
+
+library(rugarch)
+library(tidyquant)
+#0--------------
+#support functions
+# Define the function to translate the date and convert it to a Date type
+convert_date <- function(date_string) {
+  # Translate the Spanish month abbreviations to English
+  date_string <- gsub("Ene", "Jan", date_string)
+  date_string <- gsub("Feb", "Feb", date_string)
+  date_string <- gsub("Mar", "Mar", date_string)
+  date_string <- gsub("Abr", "Apr", date_string)
+  date_string <- gsub("May", "May", date_string)
+  date_string <- gsub("Jun", "Jun", date_string)
+  date_string <- gsub("Jul", "Jul", date_string)
+  date_string <- gsub("Ago", "Aug", date_string)
+  date_string <- gsub("Set", "Sep", date_string)
+  date_string <- gsub("Oct", "Oct", date_string)
+  date_string <- gsub("Nov", "Nov", date_string)
+  date_string <- gsub("Dic", "Dec", date_string)
+  
+  # Parse the modified date string into a Date object
+  return(date_string)
+}
+#1------------------
+#Load data + Data cleaning
+
+#read tc interbancario
+df <- read.csv("Homework/Homework N°2/TC_interbancarioSBS_venta_BCRP.csv", header = TRUE)
+#delete first row of df
+df <- df[-1,]
+#rename colums to TC and date
+colnames(df) <- c("date", "TC")
+# Apply the function to the 'date' column
+df$date <- sapply(df$date, convert_date)
+# convert to date, turn numeric, filter date from 2007 onwards
+df <- df %>% 
+  mutate(Date = dmy(date),
+         TC = ifelse(TC == "n.d", NA, as.numeric(TC))) %>%
+  filter(Date >= "2007-01-01", complete.cases(TC))
+#glimpse(df)
+
+#plot with ggplot
+# ggplot(df, aes(x=Date, y=TC)) + geom_line() + labs(title = "Tipo de cambio interbancario", x = "Fecha", y = "Tipo de cambio") + theme_minimal()
+df.xts <- xts(df$TC, order.by = df$Date)
+#plot with quantmod
+chart_Series(df.xts)
+
+daily.Ret <- df %>%
+  tq_transmute(
+    select = TC,
+    mutate_fun = periodReturn,
+    period = "daily",
+    type = "log"
+  )
+daily.Ret.xts <- xts(daily.Ret$daily.returns, order.by = df$Date)
+#----------------
+MC_sims <- 100
+#-----------
+#Check stationarity for daily returns xts
+plot(daily.Ret.xts)
+adf.test(daily.Ret.xts)
+
+#Asumiendo que el mejor garch es 1,1
+garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+                         mean.model = list(armaOrder = c(0, 0)))
+garch_fit <- ugarchfit(spec = garch_spec, data = daily.Ret.xts)
+
+simulations <- ugarchsim(garch_fit, n.sim = 10, m.sim = MC_sims)
+#nsim is the steps of the simulation, m.sim is the number of simulations
+
+test <- simulations@simulation$seriesSim
+#each col is a mc simulation
+#each row is the time step
+
+# Extract positive returns
+positive_returns <- test[test > 0]
+negative_returns <- test[test < 0]
+
+
+# Compute the mean of the positive returns
+mean_pos <- mean(positive_returns)
+mean_pos
+
+# Compute the 40th quantile of the positive returns
+pos_quantile <- quantile(positive_returns, probs = c(0.5, 0.75, 0.9, 0.95, 0.99))
+pos_quantile
+
+#tambien hacer lo mismo para negative returns
+
+
+
+##For weekly returns
+weekly.5days <- period.apply(daily.Ret.xts, endpoints(daily.Ret.xts, on = "days", k = 5), FUN = colMeans)
+#asumiendo un garch 1,1
+garch_fit.week <- ugarchfit(spec = garch_spec, data = weekly.5days)
+simulations.week <- ugarchsim(garch_fit.week, n.sim = 10, m.sim = MC_sims)
+#nsim is the steps of the simulation, m.sim is the number of simulations
+
+weekly.sims <- simulations.week@simulation$seriesSim
+
+#extract positive returns and negative
+weeklypos <- weekly.sims[weekly.sims > 0]
+weeklyneg <- weekly.sims[weekly.sims < 0]
+
+
+# Compute the mean of the positive returns weekly
+mean_pos.week <- mean(weeklypos)
+mean_pos.week
+
+# Compute the 40th quantile of the positive returns
+pos_quantile.week <- quantile(weeklypos, probs = c(0.5, 0.75, 0.9, 0.95, 0.99))
+pos_quantile.week
+
+#hacer lo mismo para negative returns
+
+##For monyhly returns
+monthly.21days <- period.apply(daily.Ret.xts, endpoints(daily.Ret.xts, on = "days", k = 21), FUN = colMeans)
+#Repeter lo mismo que para weekly
+
+##for quarterly returns
+quarterly.63days <- period.apply(daily.Ret.xts, endpoints(daily.Ret.xts, on = "days", k = 63), FUN = colMeans)
+#repetir...
+
+##for semester returns
+semesterly.126days <- period.apply(daily.Ret.xts, endpoints(daily.Ret.xts, on = "days", k = 126), FUN = colMeans)
+#repetir...
+
