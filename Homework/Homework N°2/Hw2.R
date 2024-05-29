@@ -29,6 +29,7 @@ library(tseries)
 library(forecast)
 
 library(rugarch)
+library(tidyquant)
 #0--------------
 #support functions
 # Define the function to translate the date and convert it to a Date type
@@ -73,104 +74,136 @@ df <- df %>%
 df.xts <- xts(df$TC, order.by = df$Date)
 #plot with quantmod
 chart_Series(df.xts)
-#2------------------
-#turning data to specified periodicity
-#turn and plot using OHLC data
-weekly.ohlc <- to.period(df.xts, period = "weeks", OHLC = TRUE)
-monthly.ohlc <- to.period(df.xts, period = "months", OHLC = TRUE)
-quarterly.ohlc <- to.period(df.xts, period = "quarters", OHLC = TRUE)
-Semester.ohlc <- to.period(df.xts, period = "months", OHLC = TRUE, k = 6)
-#pltoing
-chart_Series(weekly.ohlc)
-chart_Series(monthly.ohlc)
-chart_Series(quarterly.ohlc)
-chart_Series(Semester.ohlc)
 
-#using days specified and returning the average price in said period
-weekly.5days.mean <- period.apply(df.xts, endpoints(df.xts, on = "days", k = 5), FUN = colMeans)
-monthly.21days.mean <- period.apply(df.xts, endpoints(df.xts, on = "days", k = 21), FUN = colMeans)
-quarterly.63days.mean <- period.apply(df.xts, endpoints(df.xts, on = "days", k = 63), FUN = colMeans)
-semesterly.126days.mean <- period.apply(df.xts, endpoints(df.xts, on = "days", k =126), FUN = colMeans)
-#plotting
-chart_Series(weekly.5days.mean)
-chart_Series(monthly.21days.mean)
-chart_Series(quarterly.63days.mean)
-chart_Series(semesterly.126days.mean)
+daily.Ret <- df %>%
+  tq_transmute(
+    select = TC,
+    mutate_fun = periodReturn,
+    period = "daily",
+    type = "log"
+  )
+daily.Ret.xts <- xts(daily.Ret$daily.returns, order.by = df$Date)
+#----------------
+#Check stationarity for daily returns xts
+plot(daily.Ret.xts)
+adf.test(daily.Ret.xts)
 
-#garch fit and simulation (1000)
-
-#1. Calculate log returns from mean prices of weekly.5days.mean
-quarterly.63days.mean.ret <- diff(log(quarterly.63days.mean))
-quarterly.63days.mean.ret <- quarterly.63days.mean.ret[-1,]
-
-# stationarity check
-plot(quarterly.63days.mean.ret)
-adf.test(quarterly.63days.mean.ret)
-
-# ACF plot of log returns
-acf(quarterly.63days.mean.ret, main = "Autocorrelation Function (ACF) of Log Returns")
-
-# PACF plot of log returns
-pacf(quarterly.63days.mean.ret, main = "Partial Autocorrelation Function (PACF) of Log Returns")
-
-
-# Fit GARCH(1,1) model (example)
+#Asumiendo que el mejor garch es 1,1
 garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
                          mean.model = list(armaOrder = c(0, 0)))
-garch_fit <- ugarchfit(spec = garch_spec, data = quarterly.63days.mean.ret)
-# Volatility clustering plot
-plot(garch_fit, which = "all")
+garch_fit <- ugarchfit(spec = garch_spec, data = daily.Ret.xts)
+
+simulations <- ugarchsim(garch_fit, n.sim = 10, m.sim = 2)
+#nsim is the steps of the simulation, m.sim is the number of simulations
+
+test <- simulations@simulation$seriesSim
+#each col is a mc simulation
+#each row is the time step
+
+# Extract positive returns
+positive_returns <- test[test > 0]
+# Compute the mean of the positive returns
+mean_positive <- mean(positive_returns)
+mean_positive
+# Compute the 40th quantile of the positive returns
+quantile_40 <- quantile(positive_returns, probs = c(0.5, 0.75, 0.9, 0.95, 0.99))
+quantile_40
 
 
-#Model Selection Criteria
-infocriteria(garch_fit)
-
-
-
-residuals(garch_fit)
-
-?infocriteria
-
-## Sensitivity analysis (varying GARCH orders) #necesita correr el modelo con grid search para tener mejores fits
-garch_orders <- c(1:3)
-for (p in garch_orders) {
-  for (q in garch_orders) {
-    garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(p, q)),
-                             mean.model = list(armaOrder = c(0, 0)))
-    garch_fit <- ugarchfit(spec = garch_spec, data = quarterly.63days.mean.ret)
-    print(paste("AIC for GARCH(", p, ",", q, "):", infocriteria(garch_fit)[1]))
-  }
-}
-
-#foward sim
-# Fit GARCH(1,1) model (asumming best model)
-garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
-                         mean.model = list(armaOrder = c(0, 0)))
-garch_fit <- ugarchfit(spec = garch_spec, data = log_returns)
-
-# Perform forward simulation
-n_steps <- 50  # Number of steps for simulation
-simulated_returns <- ugarchsim(garch_fit, n.sim = n_steps)
-
-
-# str(simulated_returns)
-# # Convert the simulated returns to prices
-# simulated_prices <- exp(cumsum(simulated_returns))
-# str(simulated_prices)
-# #plot
-# plot(simulated_prices, type = "l", col = "blue", lwd = 2, main = "Simulated Prices from GARCH(1,1) Model", xlab = "Time", ylab = "Price")
-
-
-#Historic data summary
-#para el quarterly data
-appreciation <- quarterly.63days.mean.ret[quarterly.63days.mean.ret>0]
-
-hist(appreciation)
-mean(appreciation)
-quantile(appreciation, probs = c(0.5, 0.75, 0.9, 0.95, 0.99))
-
-depreciation <- quarterly.63days.mean.ret[quarterly.63days.mean.ret<0]
-hist(depreciation)
-mean(depreciation)
-quantile(depreciation, probs = c(1-0.5, 1- 0.75, 1- 0.9, 1- 0.95, 1-0.99))
-
+#x------------------
+# #turning data to specified periodicity
+# #turn and plot using OHLC data
+# weekly.ohlc <- to.period(df.xts, period = "weeks", OHLC = TRUE)
+# monthly.ohlc <- to.period(df.xts, period = "months", OHLC = TRUE)
+# quarterly.ohlc <- to.period(df.xts, period = "quarters", OHLC = TRUE)
+# Semester.ohlc <- to.period(df.xts, period = "months", OHLC = TRUE, k = 6)
+# #pltoing
+# chart_Series(weekly.ohlc)
+# chart_Series(monthly.ohlc)
+# chart_Series(quarterly.ohlc)
+# chart_Series(Semester.ohlc)
+# 
+# #using days specified and returning the average price in said period
+# weekly.5days.mean <- period.apply(df.xts, endpoints(df.xts, on = "days", k = 5), FUN = colMeans)
+# monthly.21days.mean <- period.apply(df.xts, endpoints(df.xts, on = "days", k = 21), FUN = colMeans)
+# quarterly.63days.mean <- period.apply(df.xts, endpoints(df.xts, on = "days", k = 63), FUN = colMeans)
+# semesterly.126days.mean <- period.apply(df.xts, endpoints(df.xts, on = "days", k =126), FUN = colMeans)
+# #plotting
+# chart_Series(weekly.5days.mean)
+# chart_Series(monthly.21days.mean)
+# chart_Series(quarterly.63days.mean)
+# chart_Series(semesterly.126days.mean)
+# 
+# #garch fit and simulation (1000)
+# 
+# #1. Calculate log returns from mean prices of weekly.5days.mean
+# # quarterly.63days.mean.ret <- diff(log(quarterly.63days.mean))
+# # quarterly.63days.mean.ret <- quarterly.63days.mean.ret[-1,]
+# 
+# # stationarity check
+# # plot(quarterly.63days.mean.ret)
+# # adf.test(quarterly.63days.mean.ret)
+# 
+# # ACF plot of log returns
+# #acf(quarterly.63days.mean.ret, main = "Autocorrelation Function (ACF) of Log Returns")
+# 
+# # PACF plot of log returns
+# #pacf(quarterly.63days.mean.ret, main = "Partial Autocorrelation Function (PACF) of Log Returns")
+# 
+# 
+# # Fit GARCH(1,1) model (example)
+# # garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+# #                          mean.model = list(armaOrder = c(0, 0)))
+# # garch_fit <- ugarchfit(spec = garch_spec, data = quarterly.63days.mean.ret)
+# # # Volatility clustering plot
+# # plot(garch_fit, which = "all")
+# 
+# 
+# #Model Selection Criteria
+# # infocriteria(garch_fit)
+# # residuals(garch_fit)
+# # ?infocriteria
+# 
+# ## Sensitivity analysis (varying GARCH orders) #necesita correr el modelo con grid search para tener mejores fits
+# # garch_orders <- c(1:3)
+# # for (p in garch_orders) {
+# #   for (q in garch_orders) {
+# #     garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(p, q)),
+# #                              mean.model = list(armaOrder = c(0, 0)))
+# #     garch_fit <- ugarchfit(spec = garch_spec, data = quarterly.63days.mean.ret)
+# #     print(paste("AIC for GARCH(", p, ",", q, "):", infocriteria(garch_fit)[1]))
+# #   }
+# # }
+# 
+# #foward sim
+# # Fit GARCH(1,1) model (asumming best model)
+# # garch_spec <- ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+# #                          mean.model = list(armaOrder = c(0, 0)))
+# # garch_fit <- ugarchfit(spec = garch_spec, data = log_returns)
+# # 
+# # # Perform forward simulation
+# # n_steps <- 50  # Number of steps for simulation
+# # simulated_returns <- ugarchsim(garch_fit, n.sim = n_steps)
+# 
+# 
+# # str(simulated_returns)
+# # # Convert the simulated returns to prices
+# # simulated_prices <- exp(cumsum(simulated_returns))
+# # str(simulated_prices)
+# # #plot
+# # plot(simulated_prices, type = "l", col = "blue", lwd = 2, main = "Simulated Prices from GARCH(1,1) Model", xlab = "Time", ylab = "Price")
+# 
+# 
+# #Historic data summary
+# #para el quarterly data
+# # appreciation <- quarterly.63days.mean.ret[quarterly.63days.mean.ret>0]
+# # 
+# # hist(appreciation)
+# # mean(appreciation)
+# # quantile(appreciation, probs = c(0.5, 0.75, 0.9, 0.95, 0.99))
+# # 
+# # depreciation <- quarterly.63days.mean.ret[quarterly.63days.mean.ret<0]
+# # hist(depreciation)
+# # mean(depreciation)
+# # quantile(depreciation, probs = c(1-0.5, 1- 0.75, 1- 0.9, 1- 0.95, 1-0.99))
+# 
