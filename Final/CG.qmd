@@ -1,0 +1,69 @@
+# Ideas
+
+Market dependant strategies
+
+-   Momentum
+
+    -   Encontrar las 5 acciones mas volatiles (ROC) del SPY para periodos diarios (ultimos 5 dias), calcular la desviacion estandar, apuntar comprar midpoint y vender cuando supere algo
+
+Market neutral strategies
+
+-   **Statistical Arbitrage**
+
+    -   **Pairs trading**
+
+    -   **Mean reversion**
+
+-   Using options
+
+    -   **Delta Neutral**:
+
+    -   Volatility Arbitrage
+
+# Estrategias de US Equities
+
+Objetivo: obtener mejores retornos que el SP500
+
+# Pairs trading
+
+### **Step 1: Identify Potential Pairs**
+
+1.  **Sector or Industry Similarity**: Choose pairs from the same sector or industry since they are more likely to exhibit similar price movements. For example, selecting two major bank stocks like JPMorgan Chase (JPM) and Bank of America (BAC).
+
+2.  **Historical Correlation**: Analyze historical price data to identify pairs with high correlation. This can be done using a correlation matrix.
+
+### **Step 2: Collect and Prepare Data**
+
+1.  **Historical Price Data**: Gather historical daily closing prices for the selected pairs. You can use data sources like Yahoo Finance, Google Finance, or financial market databases.
+
+2.  **Calculate Log Returns**: Calculate daily log returns for the selected stocks. Log returns are preferred due to their desirable statistical properties for modeling.
+
+### **Step 3: Test for Cointegration**
+
+1.  **Engle-Granger Test**: Use the Engle-Granger two-step method to test for cointegration. Cointegration implies that while the individual prices may be non-stationary, their linear combination is stationary.
+
+2.  **Johansen Test**: This is a more complex test for multiple cointegration relationships and can be useful if you are considering more than two stocks.
+
+### **Step 4: Develop a Trading Model**
+
+1.  **Mean Reversion Model**: If the pairs are cointegrated, they should revert to a mean over time. Create a mean reversion model to identify trading signals.
+
+2.  **Z-Score Calculation**: Calculate the z-score of the spread between the two stocks. The spread is the difference in price between the two stocks.
+
+    Spread=�1−��2Spread=P1​−βP2​
+
+    where �1P1​ and �2P2​ are the prices of the two stocks, and �β is the hedge ratio from the cointegration test.
+
+3.  **Entry and Exit Signals**:
+
+    -   **Entry Signal**: Enter a trade when the z-score exceeds a certain threshold (e.g., 2 standard deviations). For example, if the z-score is greater than 2, short the spread; if it is less than -2, long the spread.
+
+    -   **Exit Signal**: Exit the trade when the z-score reverts to the mean (e.g., between -1 and 1).
+
+### **Step 5: Implement Risk Management**
+
+1.  **Stop-Loss and Take-Profit**: Set stop-loss and take-profit levels to manage risk. For example, if the z-score reaches 3 standard deviations or -3 standard deviations, exit the position to prevent large losses.
+
+2.  **Position Sizing**: Determine the position size based on your risk tolerance and the volatility of the spread.
+
+s
