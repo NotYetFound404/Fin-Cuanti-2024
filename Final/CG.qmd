@@ -20,6 +20,12 @@ Market neutral strategies
 
     -   Volatility Arbitrage
 
+Fundamentals
+
+-   Dividends arbitrage: This strategy involves buying a stock just before its ex-dividend date (to collect the dividend) and selling call options on the stock. The goal is to profit from the dividend while minimizing risk through the options position.
+
+-   Value investing
+
 # Estrategias de US Equities
 
 Objetivo: obtener mejores retornos que el SP500
