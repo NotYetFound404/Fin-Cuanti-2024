@@ -4,12 +4,12 @@ library(quantstrat)
 currency("USD")
 stock("SPY",currency="USD",multiplier=1)
 Sys.setenv(TZ="UTC") #setting up the timezone
-initDate <- "2007-01-02" #Date of initiation
-from <- "2007-01-03" #Start date of the data set
-to <- "2018-03-18" #End date of the data set
+initDate <- "2018-11-01" #Date of initiation
+from <- "2018-11-01" #Start date of the data set
+to <- "2018-12-31" #End date of the data set
 initEq <- 1000 #Initial equity
-nFast <- 10
-nSlow <- 30
+nFast <- 5
+nSlow <- 15
 orderqty <- 100
 getSymbols("SPY", from = from, to = to)
 strategy.st <- "luxor" #Name the strategy
@@ -76,6 +76,21 @@ updatePortf(strategy.st)
 updateAcct(strategy.st)
 updateEndEq(strategy.st)
 chart.Posn(portfolio.st, "SPY")
+
+#Prueba para ver como funciona el chart.Posn para sacar los signals
+# test.Port <- getPortfolio(portfolio.st)
+# Trades = test.Port$symbols[["SPY"]]$txn$Txn.Qty
+# Buys = test.Port$symbols[["SPY"]]$txn$Txn.Price[which(Trades > 0)]
+# Sells = test.Port$symbols[["SPY"]]$txn$Txn.Price[which(Trades <0)]
+# chart_Series(SPY, name = "SPY", TA = NULL)
+# add_TA(Buys, pch = 2, type = "p", col = "green", on = 1,cex = 4)
+# add_TA(Sells, pch = 6, type = "p", col = "red", on = 1, cex = 4)
+
+
+
+
+
+
 tStats <- tradeStats(Portfolios = portfolio.st, use="trades", inclZeroDays=FALSE)
 knitr::kable(t(tStats))
 rets <- PortfReturns(Account = account.st)
