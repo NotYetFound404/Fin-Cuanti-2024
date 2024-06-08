@@ -27,6 +27,12 @@ head(closePrices)
 
 # Train and test data
 train <- log(closePrices[1:220])
+
+head(train, 1)
+tail(train, 1)
+
+
+
 test <- log(closePrices[221:252])
 left_side<-NULL
 right_side<-NULL
@@ -67,3 +73,5 @@ mypairs_reg <- mypairs %>%
   )
 mypairs_reg
 plot(mypairs_reg$z_score[[1]])
+
+

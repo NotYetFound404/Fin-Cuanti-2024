@@ -121,3 +121,4 @@ ggplot(data.frame(zscore), aes(y=AMZN, x = index(myspread)))+
   geom_hline(yintercept = -sd(zscore), linetype = "dashed", color = "blue") +
   labs(title="zscore", x="Time", y="Spread")+
   theme_minimal()
+

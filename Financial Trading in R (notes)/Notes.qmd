@@ -1,0 +1,15 @@
+The mechanics of trading usually come in one of two forms:
+
+Trend trading (also divergence or momentum), which is a bet that a quantity, such as a price, will keep moving in its current direction. Reversion trading (also convergence, cycle, or oscillation), which is a bet that a quantity, such as a price, will reverse.
+
+Quantstrat
+
+1.  Boiler plate setup
+2.  Indicators
+3.  Signals
+4.  ![](images/clipboard-1140087267.png)
+5.  ![](images/clipboard-1495429180.png)
+
+ For example, a signal may be triggered by a shorter lookback moving average going from *less than* to *greater than* a longer lookback moving average. Another signal may be triggered when an oscillator goes from being above a certain set quantity (for example, 20) to below, and so on.
+
+![![](images/clipboard-3345803708.png)](images/clipboard-4041740999.png)

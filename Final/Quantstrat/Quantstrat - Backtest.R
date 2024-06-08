@@ -21,7 +21,6 @@ initAcct(strategy.st, portfolios = strategy.st, initDate = initDate, initEq = in
 initOrders(portfolio = strategy.st, initDate = initDate) 
 strategy(strategy.st, store = TRUE)
 
-sma_values <- SMA(Cl(get("SPY")), n = 10) 
 
 add.indicator(strategy.st, name = "SMA",
               arguments = list(
