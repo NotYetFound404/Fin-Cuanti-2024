@@ -264,3 +264,6 @@ if("package:PerformanceAnalytics" %in% search() ||
 
 tStats <- tradeStats(Portfolios = portfolio1.st, use="trades", inclZeroDays=FALSE)
 knitr::kable(t(tStats))
+
+
+
