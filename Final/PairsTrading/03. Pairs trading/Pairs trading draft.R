@@ -1,4 +1,4 @@
-7#-----------------
+#-----------------
 alignSymbols <- function(symbols, env=.GlobalEnv) {
   # This is a simplified version of qmao::alignSymbols()
   if (length(symbols) < 2) 

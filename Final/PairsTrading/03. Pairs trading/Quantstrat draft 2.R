@@ -10,12 +10,11 @@ Sys.setenv(TZ="UTC")
 
 # Create initdate, from, and to strings
 initDate <- "1999-01-01"
-from <- "2003-01-01"
-to <- "2015-12-31"
+from <- "2020-7-01"
+to <- "2020-11-13"
 
 #set stocks and currecy
-symbols = c("SPY"); currency = "USD"
-
+symbols <- c("AMZN", "NFLX")
 
 # Define your trade size and initial equity
 tradesize <- 100000
@@ -25,9 +24,12 @@ initEq <- 100000
 # Retrieve SPY from yahoo
 getSymbols(symbols, from = from, to = to, src = "yahoo", adjust = TRUE)
 
+currency = "USD"
 #Use stock() to initialize SPY and set currency to USD
-stock(symbols,currency=currency,multiplier=1); currency(currency) # Set the currency to USD 
-
+currency(currency) # Set the currency to USD 
+for (symbol in symbols) {
+  stock(symbol, currency = "USD", multiplier = 1)
+}
 # Define the names of your strategy, portfolio and account
 strategy.st <- portfolio.st <- account.st <- "firststrat"
 # Remove the existing strategy if it exists
@@ -48,54 +50,67 @@ strategy(strategy.st, store = TRUE)
 strategy <- getStrategy(strategy.st)
 #View(strategy)
 
-# Create a 200-day SMA
-spy_sma <- SMA(Cl(SPY), n = 200)
+#get the log of the close prices
+AMZN.cl <- log(Cl(AMZN))
+NFLX.cl <- log(Cl(NFLX))
 
-# Create an RSI with a 3-day lookback period
-spy_rsi <- RSI(price = Cl(SPY), n = 3)
+# Define the log indicator function
+log_indicator <- function(x) {
+  log(x)
+}
 
-# Plot the closing prices of SPY
-plot(Cl(SPY), main = "SPY Closing Price", ylab = "Price")
-
-# Overlay a 200-day SMA
-lines(SMA(Cl(SPY), n = 200), col = "red")
-
-# What kind of indicator?
-"trend"
-
-# Plot the closing price of SPY
-plot(Cl(SPY), main = "SPY Closing Price", ylab = "Price")
-
-# Plot the RSI 2
-plot( RSI(Cl(SPY), n = 2), main = "RSI of SPY", ylab = "RSI")
-
-# What kind of indicator?
-"reversion"
+log_corr <- function(log_AMZN, log_NFLX) {
+  # Calculate the difference between log_AMZN and log_NFLX
+  corr <- cor(log_AMZN,log_NFLX)
+  
+  # Return the difference value as the custom indicator
+  return(corr)
+}
 
 
-# Add a 200-day SMA indicator to strategy.st
-add.indicator(strategy = strategy.st, 
-              
-              # Add the SMA function
-              name = "SMA", 
-              
-              # Create a lookback period
-              arguments = list(x = quote(Cl(mktdata)), n = 200), 
-              
-              # Label your indicator SMA200
-              label = "SMA200")
+
+
+# Add a Log of amazon
+strategy.st <- add.indicator(strategy = strategy.st, 
+                             name = "log_indicator", 
+                             arguments = list(x = quote(Cl(AMZN))), 
+                             label = "log_AMZN")
+# Add a log of nflx
+add.indicator(strategy = strategy.st,
+
+              # Add the log function
+              name = "log_indicator",
+
+              # pass the closing prices of amzn
+              arguments = list(x = quote(Cl(NFLX))),
+
+              # Label your indicator
+              label = "log_NFLX")
+#Add the correlation
+add.indicator(strategy = strategy.st, name = "runCor",
+              arguments = list(x = quote(Cl(AMZN)), y = quote(Cl(NFLX)), n = 3),
+              label = "runCorrelation_3")
+
+#Add the log correlation
+strategy.st <- add.indicator(strategy = strategy.st, 
+                             name = "log_corr",
+                             arguments = list(log_AMZN = quote(log_AMZN), log_NFLX = quote(log_NFLX)),
+                             label = "custom_diff")
+
+
+
+
+strategy <- getStrategy(strategy.st)
+#View(strategy)
+strategy$indicators
+combined_data <- merge(Cl(AMZN), Cl(NFLX))
+test1<-applyIndicators(strategy = strategy.st, mktdata =combined_data)
+
+
+
 
 # Add a 50-day SMA indicator to strategy.st
-add.indicator(strategy = strategy.st, 
-              
-              # Add the SMA function
-              name = "SMA", 
-              
-              # Create a lookback period
-              arguments = list(x = quote(Cl(mktdata)), n = 50), 
-              
-              # Label your indicator SMA50
-              label = "SMA50")
+
 
 
 # Add an RSI 3 indicator to strategy.st
