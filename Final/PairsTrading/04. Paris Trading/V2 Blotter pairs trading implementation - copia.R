@@ -36,7 +36,7 @@ Sys.setenv(TZ = "UTC")
 currency("USD")
 
 #Define which symbols we are going to use for the spread
-mySymbols <- c('NFLX', 'AMZN', 'GOOGL')
+mySymbols <- c('NFLX', 'AMZN', 'GOOGL', 'SPY')
 
 # Set up instruments
 #1. Set up currency
@@ -107,6 +107,7 @@ pairsStatInfo <- map_df(spread_names, ~{
   sprd<-residuals(m) #get residuals from the regression
   pvalue<- adf.test(sprd, alternative="stationary", k=0)$p.value #perform ADF test
   data.frame(
+    pair_name = x,
     left_side = pairs[[1]],
     right_side = pairs[[2]],
     correlation = correlation,
@@ -114,45 +115,70 @@ pairsStatInfo <- map_df(spread_names, ~{
     pvalue = pvalue
   )
 })
-significantPairs <- pairsStatInfo %>% filter(pvalue < 0.05)
+significantPairs <- pairsStatInfo %>% filter(pvalue < 0.05) # select significant pairs
+significantPairs$sorted_pair <- apply(significantPairs[, c("left_side", "right_side")], 1, function(x) paste(sort(x), collapse = "_")) #"sort" the pairs
+#test eliminar luego
+significantPairs <- significantPairs[2:3,]
+significantPairs <- significantPairs[!duplicated(significantPairs$sorted_pair), ]# Remove duplicate pairs
+
+
+
 #Start trading the significant pairs
 #First Calculate the spread and zscore from the significant pairs
-#..... FALTAA
-
 # Calculate spread and z-score
-spread <- AMZN.cl - beta * NFLX.cl
-z_score <- (spread - mean(spread)) / sd(spread)
+
+#Spread and zscore of significant pairs
+pairs.Spread <- significantPairs %>% rowwise() %>% mutate(
+  spread = list(Cl(get(left_side)) - beta * Cl(get(right_side))),
+  z_score = list((spread - mean(spread)) / sd(spread))
+)
+
 
 # Define thresholds for trading signals
 threshold <- 1
 
-# Initialize signal vectors
-long_signal <- rep(0, length(z_score))
-short_signal <- rep(0, length(z_score))
 
-# Generate signals based on z-score
-for (i in 1:length(z_score)) {
-  if (z_score[i] > threshold) {
-    short_signal[i] <- 1  # Short signal
-    addTxn(Portfolio = "myPortfolio",
-           Symbol = "NFLX_AMZN",
-           TxnDate = index(NFLX)[i],
-           TxnPrice = Cl(NFLX)[i] - Cl(AMZN)[i],
-           TxnQty = 1,
-           TxnFees = 0)
-  }
-  if (z_score[i] < -threshold) {
-    long_signal[i] <- 1  # Long signal
-    addTxn(Portfolio = "myPortfolio",
-           Symbol = "NFLX_AMZN",
-           TxnDate = index(NFLX)[i],
-           TxnPrice = Cl(NFLX)[i] - Cl(AMZN)[i],
-           TxnQty = -1,
-           TxnFees = 0)
+
+#Function that process the singlas
+process_trading_signals <- function(x) {
+  portfolio.name = "myPortfolio"
+  
+  pair.name <- x$pair_name
+  left.pair <- get(x$left_side)
+  right.pair <- get(x$right_side)
+  z_score <- unlist(x$z_score)
+  
+  # Initialize signal vectors
+  long_signal <- rep(0, length(z_score))
+  short_signal <- rep(0, length(z_score))
+  
+  # Generate signals based on z-score
+  for (i in 1:length(z_score)) {
+    if (z_score[i] > threshold) {
+      short_signal[i] <- 1  # Short signal
+      addTxn(Portfolio = portfolio.name,
+             Symbol = pair.name,
+             TxnDate = index(left.pair)[i],
+             TxnPrice = Cl(left.pair)[i] - Cl(right.pair)[i],
+             TxnQty = -1,
+             TxnFees = 0)
+    }
+    if (z_score[i] < -threshold) {
+      long_signal[i] <- 1  # Long signal
+      addTxn(Portfolio = portfolio.name,
+             Symbol = pair.name,
+             TxnDate = index(left.pair)[i],
+             TxnPrice = Cl(left.pair)[i] - Cl(right.pair)[i],
+             TxnQty = 1,
+             TxnFees = 0)
+    }
   }
 }
 
-NFLX_AMZN <- NFLX - AMZN
+#Process the signals
+apply(pairs.Spread, 1, process_trading_signals)
+
+
 # Update portfolio and account to reflect the transactions
 updatePortf(Portfolio = "myPortfolio")
 updateAcct(name = "myAccount")
@@ -163,26 +189,26 @@ myPortfolio <- getPortfolio("myPortfolio")
 # Calculate daily equity PL
 dailyStats(Portfolios = "myPortfolio")
 dailyPL <- dailyEqPL(Portfolios = "myPortfolio")
-txns <- getTxns(Portfolio = "myPortfolio", Symbol = "NFLX_AMZN")
-#Chart 1
-chart.Posn(Portfolio = "myPortfolio", Symbol = "NFLX_AMZN")
-#Chart 2
-Buys = txns$Txn.Price[which(txns$Txn.Qty > 0)]
-Sells = txns$Txn.Price[which(txns$Txn.Qty < 0)]
-
-chart_Series(Cl(NFLX_AMZN))
-add_TA(Sells, pch = 6, type = "p", col = "red", on = 1, cex  = 2)
-add_TA(Buys, pch = 6, type = "p", col = "green", on = 1,cex  = 2)
-
-#chart 3
-z_score_Buys = z_score[index(Buys)] #no se porque el buys debo pintarlo de rojo xd
-z_score_Sells = z_score[index(Sells)]
-
-chart_Series(z_score)
-add_TA(z_score_Sells, pch = 6, type = "p", col = "green", on = 1, cex  = 2)
-add_TA(z_score_Buys, pch = 6, type = "p", col = "red", on = 1,cex  = 2)
-abline(h = threshold, col = "red", lty = 2)  # Line for +1 threshold
-abline(h = -threshold, col = "green", lty = 2)  # Line for -1 threshold
+# #txns <- getTxns(Portfolio = "myPortfolio", Symbol = "NFLX_AMZN")
+# #Chart 1
+# chart.Posn(Portfolio = "myPortfolio", Symbol = "NFLX_AMZN")
+# #Chart 2
+# Buys = txns$Txn.Price[which(txns$Txn.Qty > 0)]
+# Sells = txns$Txn.Price[which(txns$Txn.Qty < 0)]
+# 
+# chart_Series(Cl(NFLX_AMZN))
+# add_TA(Sells, pch = 6, type = "p", col = "red", on = 1, cex  = 2)
+# add_TA(Buys, pch = 6, type = "p", col = "green", on = 1,cex  = 2)
+# 
+# #chart 3
+# z_score_Buys = z_score[index(Buys)] #no se porque el buys debo pintarlo de rojo xd
+# z_score_Sells = z_score[index(Sells)]
+# 
+# chart_Series(z_score)
+# add_TA(z_score_Sells, pch = 6, type = "p", col = "green", on = 1, cex  = 2)
+# add_TA(z_score_Buys, pch = 6, type = "p", col = "red", on = 1,cex  = 2)
+# abline(h = threshold, col = "red", lty = 2)  # Line for +1 threshold
+# abline(h = -threshold, col = "green", lty = 2)  # Line for -1 threshold
 #stats
 tStats <- tradeStats(Portfolios = "myPortfolio")
 t(tStats)
@@ -191,6 +217,6 @@ port.Summ <- myPortfolio$summary
 rets <- PortfReturns(Account = "myAccount")
 rownames(rets) <- NULL
 charts.PerformanceSummary(rets, colorset = bluefocus)
-pts <- perTradeStats("myPortfolio", Symbol = "NFLX_AMZN")
-dailatTxpl <- dailyTxnPL(Portfolios = "myPortfolio", Symbol = "NFLX_AMZN")
+#pts <- perTradeStats("myPortfolio", Symbol = "NFLX_AMZN")
+#dailatTxpl <- dailyTxnPL(Portfolios = "myPortfolio", Symbol = "NFLX_AMZN")
 getEndEq("myAccount", Date = "2020-11-13")

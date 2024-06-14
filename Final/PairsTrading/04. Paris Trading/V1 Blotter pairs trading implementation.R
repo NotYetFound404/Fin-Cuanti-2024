@@ -27,7 +27,7 @@ rm("portfolio.myPortfolio", pos = .blotter)
 # Initialize portfolio and account
 initPortf(name = "myPortfolio", symbols = c("NFLX", "AMZN", "NFLX_AMZN"), currency = "USD")
 initAcct(name = "myAccount", portfolios = "myPortfolio", initEq = 100000, currency = "USD")
-initOrders(portfolio = "myPortfolio")
+#initOrders(portfolio = "myPortfolio")
 
 # Check the environment for objects
 ls(envir = .blotter)
