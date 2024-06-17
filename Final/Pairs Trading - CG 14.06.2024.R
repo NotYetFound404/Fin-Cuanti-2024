@@ -189,26 +189,27 @@ myPortfolio <- getPortfolio("myPortfolio")
 # Calculate daily equity PL
 dailyStats(Portfolios = "myPortfolio")
 dailyPL <- dailyEqPL(Portfolios = "myPortfolio")
-# #txns <- getTxns(Portfolio = "myPortfolio", Symbol = "NFLX_AMZN")
-# #Chart 1
-# chart.Posn(Portfolio = "myPortfolio", Symbol = "NFLX_AMZN")
-# #Chart 2
-# Buys = txns$Txn.Price[which(txns$Txn.Qty > 0)]
-# Sells = txns$Txn.Price[which(txns$Txn.Qty < 0)]
-# 
-# chart_Series(Cl(NFLX_AMZN))
-# add_TA(Sells, pch = 6, type = "p", col = "red", on = 1, cex  = 2)
-# add_TA(Buys, pch = 6, type = "p", col = "green", on = 1,cex  = 2)
-# 
-# #chart 3
-# z_score_Buys = z_score[index(Buys)] #no se porque el buys debo pintarlo de rojo xd
-# z_score_Sells = z_score[index(Sells)]
-# 
-# chart_Series(z_score)
-# add_TA(z_score_Sells, pch = 6, type = "p", col = "green", on = 1, cex  = 2)
-# add_TA(z_score_Buys, pch = 6, type = "p", col = "red", on = 1,cex  = 2)
-# abline(h = threshold, col = "red", lty = 2)  # Line for +1 threshold
-# abline(h = -threshold, col = "green", lty = 2)  # Line for -1 threshold
+
+txns <- getTxns(Portfolio = "myPortfolio", Symbol = "NFLX_AMZN")
+#Chart 1
+chart.Posn(Portfolio = "myPortfolio", Symbol = "NFLX_AMZN")
+#Chart 2
+Buys = txns$Txn.Price[which(txns$Txn.Qty > 0)]
+Sells = txns$Txn.Price[which(txns$Txn.Qty < 0)]
+
+chart_Series(Cl(NFLX_AMZN))
+add_TA(Sells, pch = 6, type = "p", col = "red", on = 1, cex  = 2)
+add_TA(Buys, pch = 6, type = "p", col = "green", on = 1,cex  = 2)
+
+#chart 3
+z_score_Buys = z_score[index(Buys)] #no se porque el buys debo pintarlo de rojo xd
+z_score_Sells = z_score[index(Sells)]
+
+chart_Series(z_score)
+add_TA(z_score_Sells, pch = 6, type = "p", col = "green", on = 1, cex  = 2)
+add_TA(z_score_Buys, pch = 6, type = "p", col = "red", on = 1,cex  = 2)
+abline(h = threshold, col = "red", lty = 2)  # Line for +1 threshold
+abline(h = -threshold, col = "green", lty = 2)  # Line for -1 threshold
 #stats
 tStats <- tradeStats(Portfolios = "myPortfolio")
 t(tStats)
@@ -220,3 +221,4 @@ charts.PerformanceSummary(rets, colorset = bluefocus)
 #pts <- perTradeStats("myPortfolio", Symbol = "NFLX_AMZN")
 #dailatTxpl <- dailyTxnPL(Portfolios = "myPortfolio", Symbol = "NFLX_AMZN")
 getEndEq("myAccount", Date = "2020-11-13")
+
