@@ -131,84 +131,87 @@ strategy.st <- portfolio.st <- account.st <- "firststrat"; rm.strat("firststrat"
 # Initialize the portfolio, account, and orders
 initPortf(portfolio.st, symbols = symbols, initDate = initDate, currency = currency); initAcct(account.st, portfolios = portfolio.st, initDate = initDate, currency = currency, initEq = initEq); initOrders(portfolio.st, initDate = initDate); strategy(strategy.st, store = TRUE)
 
-#first check at what strategy holds
-strategy <- getStrategy(strategy.st)
-add.indicator(strategy = strategy.st,
-              name = "rollingSD",
-              arguments = list(spread_xts = quote(mktdata), window = 30),
-              label = "rollingSD")
 
-add.indicator(strategy = strategy.st,
-              name = "cointegrationIndicator",
-              arguments = list(pair_name = quote(mktdata), n = 60),
-              label = "Cointegration60")
-add.indicator(strategy = strategy.st,
-              name = "rollingZScore",
-              arguments = list(spread_xts = quote(mktdata), n = 60),
-              label = "ZScore60")
-add.indicator(strategy = strategy.st,
-              name = "rankingFunctionSD",
-              arguments = list(column_name = quote(mkdata), window = 30),
-              label = "rankingFunctionSD")
-test2 <- applyIndicators(strategy = strategy.st, mktdata = StockA_StockC)
+for(symb in symbols){
+  print(symb)
+}
 
 
-#añadir señales
-add.signal(strategy.st, name = "sigThreshold",
-           arguments = list(column = "ZScore60",
-                            threshold = zScoreThresh,
-                            relationship = "gte",
-                            cross = TRUE),
-           label = "longEntry")
-add.signal(strategy.st, name = "sigThreshold",
-           arguments = list(column = "ZScore60",
-                            threshold = -zScoreThresh,
-                            relationship = "lte",
-                            cross = TRUE),
-           label = "shortEntry")
-add.signal(strategy.st, name = "sigFormula",
-           arguments = list(columns = c("Cointegrated.Cointegration60"),
-                            formula = "(Cointegrated.Cointegration60 == 1)"),
-           label = "pairIsCointegrated")
-add.signal(strategy.st, name = "sigThreshold",
-           arguments = list(column = "rankingFunctionSD",
-                            threshold = topRankedSDPairsThreshold,
-                            relationship = "lte",
-                            cross = FALSE),
-           label = "pairIsInTopRankedSDThresh")
+rollingSD_indicator <- rollingSD(spread_xts = StockA_StockC, window = 30)
+colnames(rollingSD_indicator) <- "RollingSDIndicator"
+cointegration_indicator <- cointegrationIndicator(pair_name = StockA_StockC, n = 60)
+colnames(cointegration_indicator) <- "Cointegrated"
+rolling_zscore_indicator <- rollingZScore(spread_xts = StockA_StockC, n = 60)
+colnames(rolling_zscore_indicator) <- "Zscore"
+rankingFunctionSD_indicator <- rankingFunctionSD(column_name = StockA_StockC, window = 30)
+colnames(rankingFunctionSD_indicator) <- "RankingFunctIndicator"
+df_indicators <- merge(rollingSD_indicator,cointegration_indicator,rolling_zscore_indicator,rankingFunctionSD_indicator)
+df_signals <- as.data.frame(df_indicators) %>% mutate(
+  finalBuySignal = ifelse(Zscore  >= zScoreThresh & Cointegrated == 1 & RankingFunctIndicator <= topRankedSDPairsThreshold, 1, 0),
+  finalSellSignal = ifelse(Zscore  <= -zScoreThresh & Cointegrated == 1 & RankingFunctIndicator <= topRankedSDPairsThreshold, 1, 0)
+) %>% select(finalBuySignal, finalSellSignal)
+df_signals <- xts(df_signals, order.by = index(StockA_StockC))
 
-add.signal(strategy.st, name = "sigFormula",
-           arguments = list(columns = c("longEntry", "pairIsCointegrated", "pairIsInTopRankedSDThresh"),
-                            formula = "(longEntry == 1) & (pairIsCointegrated == 1) & (pairIsInTopRankedSDThresh == 1)"),
-           label = "finalBuySignal")
 
-add.signal(strategy.st, name = "sigFormula",
-           arguments = list(columns = c("shortEntry", "pairIsCointegrated", "pairIsInTopRankedSDThresh"),
-                            formula = "(shortEntry == 1) & (pairIsCointegrated == 1) & (pairIsInTopRankedSDThresh == 1)"),
-           label = "finalSellSignal")
-test3 <- applySignals(strategy = strategy.st, mktdata = test2)
 
-# # Define las reglas de trading
-# add.rule(strategy.st, name = "ruleSignal",
-#          arguments = list(sigcol = "finalBuySignal",
-#                           sigval = 1,
-#                           orderqty = 100,  # Cantidad de acciones para comprar
-#                           ordertype = "market",  # Tipo de orden (market, limit, etc.)
-#                           orderside = "long"),  # Lado de la orden (long, short)
-#          type = "enter",  # Tipo de regla (enter, exit)
-#          label = "EnterLong")
-# 
-# add.rule(strategy.st, name = "ruleSignal",
-#          arguments = list(sigcol = "finalSellSignal",
-#                           sigval = 1,
-#                           orderqty = "all",  # Vender todas las acciones en la posición
-#                           ordertype = "market",
-#                           orderside = "long"),
-#          type = "exit",
-#          label = "ExitLong")
-# # Use applyStrategy() to apply your strategy. Save this to out
-# strategy <- applyStrategy(strategy = strategy.st, portfolios = portfolio.st)
-# 
-# # Update your portfolio (portfolio.st)
-# updatePortf(portfolio.st)
+# Define los parámetros
+window <- 30
+n <- 60
+zScoreThresh <- 1
+topRankedSDPairsThreshold <- 1
+sizing_Leverage <- 0.2
+max_size_per_trade <- 0.1
+txCost <- 0.005
+threshold <- 1
+
+# Inicializa un dataframe vacío para almacenar las señales
+signals_list <- list()
+# Itera sobre cada símbolo en symbols
+for(symb in symbols){
+  #symb = symbols[[1]]
+  # Calcula los indicadores y señales para el símbolo actual
+  rollingSD_indicator <- rollingSD(spread_xts = get(symb), window = window)
+  colnames(rollingSD_indicator) <- "RollingSDIndicator"
+  cointegration_indicator <- cointegrationIndicator(pair_name = get(symb), n = n)
+  colnames(cointegration_indicator) <- "Cointegrated"
+  rolling_zscore_indicator <- rollingZScore(spread_xts = get(symb), n = n)
+  colnames(rolling_zscore_indicator) <- "Zscore"
+  rankingFunctionSD_indicator <- rankingFunctionSD(column_name = get(symb), window = window)
+  colnames(rankingFunctionSD_indicator) <- "RankingFunctIndicator"
+  
+  # Combina los indicadores en un dataframe
+  df_indicators <- merge(rollingSD_indicator, cointegration_indicator, rolling_zscore_indicator, rankingFunctionSD_indicator)
+  
+  # Calcula las señales finales
+  df_signals <- as.data.frame(df_indicators) %>%
+    mutate(
+      finalBuySignal = ifelse(Zscore >= zScoreThresh & Cointegrated == 1 & RankingFunctIndicator <= topRankedSDPairsThreshold, 1, 0),
+      finalSellSignal = ifelse(Zscore <= -zScoreThresh & Cointegrated == 1 & RankingFunctIndicator <= topRankedSDPairsThreshold, 1, 0)
+    ) %>%
+    select(finalBuySignal, finalSellSignal)
+  df_signals <- timetk::tk_xts(df_signals, order.by = index(get(symb)))
+  
+  signals_list[[symb]] = df_signals 
+}
+signals_list
+
+
+inicioTradindDay = "2020-01-01"
+dias_de_trading = 90
+as.Date(inicioTradindDay)+dias_de_trading
+date = "2021-07-12"
+for(symb in symbols){
+  symb = symbols[[1]]
+  print(symb)
+  signals = signals_list[[symb]]
+  buy_sig = signals$finalBuySignal
+  sell_sig = signals$finalSellSignal
+  
+  buy_sig_at_date = buy_sig[date]
+  sell_sig_at_date = sell_sig[date]
+}
+
+
+
+
 

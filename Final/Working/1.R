@@ -107,6 +107,5 @@ map(spread_names, ~{
   
 })
 
-
 save.image(file = "Final/Working/synthetic_data_env.RData")
 saveInstruments(file = "Final/Working/synthetic_instruments.RData")
