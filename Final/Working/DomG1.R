@@ -131,28 +131,21 @@ strategy.st <- portfolio.st <- account.st <- "firststrat"; rm.strat("firststrat"
 # Initialize the portfolio, account, and orders
 initPortf(portfolio.st, symbols = symbols, initDate = initDate, currency = currency); initAcct(account.st, portfolios = portfolio.st, initDate = initDate, currency = currency, initEq = initEq); initOrders(portfolio.st, initDate = initDate); strategy(strategy.st, store = TRUE)
 
-
-for(symb in symbols){
-  print(symb)
-}
-
-
-rollingSD_indicator <- rollingSD(spread_xts = StockA_StockC, window = 30)
-colnames(rollingSD_indicator) <- "RollingSDIndicator"
-cointegration_indicator <- cointegrationIndicator(pair_name = StockA_StockC, n = 60)
-colnames(cointegration_indicator) <- "Cointegrated"
-rolling_zscore_indicator <- rollingZScore(spread_xts = StockA_StockC, n = 60)
-colnames(rolling_zscore_indicator) <- "Zscore"
-rankingFunctionSD_indicator <- rankingFunctionSD(column_name = StockA_StockC, window = 30)
-colnames(rankingFunctionSD_indicator) <- "RankingFunctIndicator"
-df_indicators <- merge(rollingSD_indicator,cointegration_indicator,rolling_zscore_indicator,rankingFunctionSD_indicator)
-df_signals <- as.data.frame(df_indicators) %>% mutate(
-  finalBuySignal = ifelse(Zscore  >= zScoreThresh & Cointegrated == 1 & RankingFunctIndicator <= topRankedSDPairsThreshold, 1, 0),
-  finalSellSignal = ifelse(Zscore  <= -zScoreThresh & Cointegrated == 1 & RankingFunctIndicator <= topRankedSDPairsThreshold, 1, 0)
-) %>% select(finalBuySignal, finalSellSignal)
-df_signals <- xts(df_signals, order.by = index(StockA_StockC))
-
-
+# 
+# rollingSD_indicator <- rollingSD(spread_xts = StockA_StockC, window = 30)
+# colnames(rollingSD_indicator) <- "RollingSDIndicator"
+# cointegration_indicator <- cointegrationIndicator(pair_name = StockA_StockC, n = 60)
+# colnames(cointegration_indicator) <- "Cointegrated"
+# rolling_zscore_indicator <- rollingZScore(spread_xts = StockA_StockC, n = 60)
+# colnames(rolling_zscore_indicator) <- "Zscore"
+# rankingFunctionSD_indicator <- rankingFunctionSD(column_name = StockA_StockC, window = 30)
+# colnames(rankingFunctionSD_indicator) <- "RankingFunctIndicator"
+# df_indicators <- merge(rollingSD_indicator,cointegration_indicator,rolling_zscore_indicator,rankingFunctionSD_indicator)
+# df_signals <- as.data.frame(df_indicators) %>% mutate(
+#   finalBuySignal = ifelse(Zscore  >= zScoreThresh & Cointegrated == 1 & RankingFunctIndicator <= topRankedSDPairsThreshold, 1, 0),
+#   finalSellSignal = ifelse(Zscore  <= -zScoreThresh & Cointegrated == 1 & RankingFunctIndicator <= topRankedSDPairsThreshold, 1, 0)
+# ) %>% select(finalBuySignal, finalSellSignal)
+# df_signals <- xts(df_signals, order.by = index(StockA_StockC))
 
 # Define los parámetros
 window <- 30
@@ -166,6 +159,7 @@ threshold <- 1
 
 # Inicializa un dataframe vacío para almacenar las señales
 signals_list <- list()
+indicators_list <- list()
 # Itera sobre cada símbolo en symbols
 for(symb in symbols){
   #symb = symbols[[1]]
@@ -192,25 +186,147 @@ for(symb in symbols){
   df_signals <- timetk::tk_xts(df_signals, order.by = index(get(symb)))
   
   signals_list[[symb]] = df_signals 
+  indicators_list[[symb]] = df_indicators
 }
 signals_list
+indicators_list
 
 
-inicioTradindDay = "2020-01-01"
-dias_de_trading = 90
-as.Date(inicioTradindDay)+dias_de_trading
-date = "2021-07-12"
-for(symb in symbols){
-  symb = symbols[[1]]
-  print(symb)
-  signals = signals_list[[symb]]
-  buy_sig = signals$finalBuySignal
-  sell_sig = signals$finalSellSignal
-  
-  buy_sig_at_date = buy_sig[date]
-  sell_sig_at_date = sell_sig[date]
-}
+#---------------
+# inicioTradindDay = "2020-01-01"
+# dias_de_trading = 90
+# as.Date(inicioTradindDay)+dias_de_trading
+# date = "2021-07-12"
+# for(symb in symbols){
+#   symb = symbols[[1]]
+#   print(symb)
+#   signals = signals_list[[symb]]
+#   buy_sig = signals$finalBuySignal
+#   sell_sig = signals$finalSellSignal
+#   
+#   buy_sig_at_date = buy_sig[date]
+#   sell_sig_at_date = sell_sig[date]
+# }
+#---------------
+# maxDrawdown <- 0.05
+# profitTarget <- 0.05
+# total_days <- length(index(signals_list[[1]]))
+# total_symbols <- length(signals_list)
+# for (day in 2:total_days) {
+#   #day = 208
+#   current_date <- index(signals_list[[1]])[day]
+# 
+#   total_capital <- getEndEq(account.st, Date = current_date)
+#   num_pairs <- length(signals_list) #creo que debería ser numero de active pairs
+# 
+#   # Asignación de capital basada en volatilidad
+#   #capital_allocation <- allocateCapital(total_capital, num_pairs, unlist(volatility_list))
+# 
+#   for (i in 1:total_symbols) {
+#     #i = 2
+#     symbol <- names(signals_list)[i]
+#     signals <- signals_list[[symbol]]
+# 
+#     # Obtener señales para el día 
+#     buy_signal <- signals$finalBuySignal[day]
+#     sell_signal <- signals$finalSellSignal[day]
+# 
+#     # Tamaño de la transacción
+#     #position_size <- round(capital_allocation[i])
+#     position_size <- 0.15*total_capital
+# 
+#     price = get(symbol)[current_date]
+#     
+#     
+#     if (!is.na(buy_signal) & (buy_signal == 1)) {
+#       # Ejecutar operación de compra
+#       print(paste0("buy signal ",symbol," ",  current_date, "@", price, "day- ", day))
+#       #print(price)
+#       
+#       # addTxn(Portfolio = portfolio.st, Symbol = symbol, TxnDate = current_date,
+#       #        TxnPrice = price, TxnQty = position_size, TxnFees = 0)
+#       
+#       # addTxn(Portfolio = portfolio.st, Symbol = "StockH_StockD", TxnDate = "2020-07-26",
+#       #        TxnPrice = 1.34914929340172, TxnQty = 1, TxnFees = 0)
+#       
+#     }
+# 
+#     if (!is.na(sell_signal) & (sell_signal == 1)) {
+#       print(paste0("sell signal ",symbol," ",  current_date, "@", price, "day- ", day))
+#       #print(price)
+#       # Ejecutar operación de venta
+#       # addTxn(Portfolio = portfolio.st, Symbol = symbol, TxnDate = current_date,
+#       #        TxnPrice =price , TxnQty = -position_size, TxnFees = 0)
+#     }
+# 
+#     # Actualizar portafolio, cuenta y equity final
+#     # updatePortf(portfolio.st)
+#     # updateAcct(account.st)
+#     # updateEndEq(account.st)
+#   }
+# }
+# 
+# mySymbols
 
+# allocateCapital <- function(capital, num_pairs, volatility) {
+#   allocation <- capital / num_pairs
+#   inverse_volatility <- 1 / volatility
+#   scaled_allocation <- allocation * inverse_volatility
+#   scaled_allocation <- scaled_allocation / sum(scaled_allocation) * capital * 0.90 # 90% para pares, 10% reserva
+#   return(scaled_allocation)
+# }
+# 
+# 
+# volatility_list <- list()
+# # Calcula la volatilidad de cada par para asignación de capital
+# for (symbol in names(signals_list)) {
+#   # Aquí suponemos que tienes una función para calcular la volatilidad de cada par
+#   volatility_list[[symbol]] <- indicators_list[[symbol]]$RollingSDIndicator
+# }
+# 
+# 
+# for (day in 2:total_days) {
+#   day = 91
+#   current_date <- index(signals_list[[1]])[day]
+#   
+#   total_capital <- getEndEq(account.st, Date = current_date)
+#   num_pairs <- length(signals_list) #creo que debería ser numero de active pairs
+#   
+#   # Asignación de capital basada en volatilidad
+#   #capital_allocation <- allocateCapital(total_capital, num_pairs, unlist(volatility_list))
+#   
+#   for (i in 1:total_symbols) {
+#     
+#     i = 1
+#     symbol <- names(signals_list)[i]
+#     signals <- signals_list[[symbol]]
+#     
+#     # Obtener señales para el día anterior
+#     buy_signal <- signals$finalBuySignal[day - 1]
+#     sell_signal <- signals$finalSellSignal[day - 1]
+#     
+#     # Tamaño de la transacción
+#     #position_size <- round(capital_allocation[i])
+#     #position_size <- round(capital_allocation[i])
+#     
+#     if (buy_signal == 1) {
+#       # Ejecutar operación de compra
+#       addTxn(Portfolio = portfolio_name, Symbol = symbol, TxnDate = current_date,
+#              TxnPrice = getPrice(symbol, current_date), TxnQty = position_size, TxnFees = 0)
+#     }
+#     
+#     if (sell_signal == 1) {
+#       # Ejecutar operación de venta
+#       addTxn(Portfolio = portfolio_name, Symbol = symbol, TxnDate = current_date,
+#              TxnPrice = getPrice(symbol, current_date), TxnQty = -position_size, TxnFees = 0)
+#     }
+#     
+#     # Actualizar portafolio, cuenta y equity final
+#     updatePortf(portfolio_name)
+#     updateAcct(account_name)
+#     updateEndEq(account_name)
+#   }
+# }
 
 
 
