@@ -49,7 +49,6 @@ get_positionsAtCurrentDay <- function(symbols, portfolio.st, today){
   names(positions_at_day) <- symbols
   return(positions_at_day)
 }
-
 get_CashDistribuido <- function(symbols, cash_for_trading, volatilidad_al_dia_de_hoy, señales_el_dia_de_hoy){
   capital_distribuido <- lapply(symbols, function(symb) {
     if (symb %in% señales_el_dia_de_hoy$symbolos_compra) {
