@@ -298,7 +298,7 @@ for (date in pre.dates) {
 
 today <- dates[length(pre.dates)+1]
 daily_signals <- subset(all_signals_df, Date == today)
-update_portfolio_state(today, daily_signals)
+#update_portfolio_state(today, daily_signals)
 
 #logica para despues comenzar las transacciones
 available_cash <- portfolio_state$Available_Cash[nrow(portfolio_state)]
@@ -336,15 +336,6 @@ daily_signals <- daily_signals %>% mutate(
     net_position_type == "NetLongPosition" ~ min(AbsoluteTradingWeight * max_capital_a_invertir_hoy, max_capital_a_invertir_por_transaccion),
   )
 )
-
-# 
-# #voy a distribuir en esta transacción hasta el 50% del equity (es una regla)
-# daily_signals
-# 
-# available_cash
-# margin_used
-# total_account_value
-# invested_equity
 cash_outflows <- 0
 new_margin_used <- 0
 leverage <- 0
@@ -370,21 +361,45 @@ for (j in 1:nrow(daily_signals)) {
     addTxn(Portfolio = portfolio.st, Symbol = pair, TxnDate = today, TxnPrice = price, TxnQty = -quantity, TxnFees = 0)
   }
 }
-
-margin_used <- margin_used + new_margin_used
-available_cash <- available_cash - cash_outflows
-leverage
+updatePortf(portfolio.st); updateAcct(account.st); updateEndEq(account.st)
 
 updatePortf(portfolio.st)
 updateAcct(account.st)
 updateEndEq(account.st)
 
+
+pos1 <- getPos(Portfolio = portfolio.st, Symbol = "GOOGL_TSLA", Date = today) #obtener la posición de un activo
+pos2 <- getPos(Portfolio = portfolio.st, Symbol = "TSLA_GOOGL", Date = today) #obtener la posición de un activo
+
+mkvalue1 <- pos1$Pos.Qty * pos1$Pos.Avg.Cost
+mkvalue2 <- pos2$Pos.Qty * pos2$Pos.Avg.Cost
+
+invested_equity <- mkvalue2+mkvalue1
+invested_equity <- invested_equity[[1]]
+
+margin_used <- margin_used + new_margin_used
+
+available_cash
+margin_used
+total_account_value
+invested_equity
+
+
+
+
+
+port <- getPortfolio(portfolio.st)
+margin_used <- margin_used + new_margin_used
+available_cash <- available_cash - cash_outflows
+leverage
+
+
+
 today
 dailyEqPL(Account = account.st, Portfolios = portfolio.st) #obtener el P&L diario para cada pareja
 extractTxns(Portfolio = portfolio.st) #obtener las transacciones)
 
-getPos(Portfolio = portfolio.st, Symbol = "GOOGL_TSLA", Date = to) #obtener la posición de un activo
-getPos(Portfolio = portfolio.st, Symbol = "TSLA_GOOGL", Date = to) #obtener la posición de un activo
+
 
 
 
