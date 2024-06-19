@@ -195,6 +195,224 @@ initPortf(portfolio.st, symbols = spread_names, initDate = from, currency = "USD
 initAcct(account.st, portfolios = portfolio.st, initDate = from, currency = "USD", initEq = initEq)
 initOrders(portfolio.st, initDate = from)
 
+
+initial_cash <- 1000
+portfolio_state <- data.frame(
+  Date = as.Date('2020-01-01'),
+  InvestedEquity = 0,
+  Available_Cash = initial_cash,
+  Margin_Used = 0,
+  Total_PnL = 0,
+  Pct_Invested = 0,
+  Pct_Margin_Used = 0,
+  Pct_Cash_Available = 1
+)
+portfolio_state$TotalAccountValue <- portfolio_state$InvestedEquity + portfolio_state$Margin_Used + portfolio_state$Available_Cash
+
+
+update_portfolio_state <- function(date, daily_signals) {
+    if(nrow(daily_signals) == 0){
+    portfolio_state <<- rbind(portfolio_state, data.frame(
+      Date = date,
+      InvestedEquity = portfolio_state$InvestedEquity[nrow(portfolio_state)],
+      Available_Cash = portfolio_state$Available_Cash[nrow(portfolio_state)],
+      Margin_Used = portfolio_state$Margin_Used[nrow(portfolio_state)],
+      Total_PnL = portfolio_state$Total_PnL[nrow(portfolio_state)],
+      Pct_Invested = portfolio_state$Pct_Invested[nrow(portfolio_state)],
+      Pct_Margin_Used = portfolio_state$Pct_Margin_Used[nrow(portfolio_state)],
+      Pct_Cash_Available = portfolio_state$Pct_Cash_Available[nrow(portfolio_state)],
+      TotalAccountValue = portfolio_state$TotalAccountValue[nrow(portfolio_state)]
+    ))
+    return(portfolio_state)
+    
+  }
+  
+  
+  # available_cash <- portfolio_state$Available_Cash[nrow(portfolio_state)]
+  # margin_used <- portfolio_state$Margin_Used[nrow(portfolio_state)]
+  # 
+  # if (nrow(daily_signals) > 0) {
+  #   total_inverse_sd <- sum(1 / daily_signals$SD)
+  #   daily_signals$Weight <- (1 / daily_signals$SD) / total_inverse_sd
+  #   daily_signals$Assigned_Cash <- daily_signals$Weight * available_cash
+  #   
+  #   cash_outflows <- 0
+  #   new_margin_used <- 0
+  #   
+  #   for (j in 1:nrow(daily_signals)) {
+  #     pair <- daily_signals$Pair[j]
+  #     entry_type <- daily_signals$EntryType[j]
+  #     price <- daily_signals$Price[j]
+  #     assigned_cash <- daily_signals$Assigned_Cash[j]
+  #     quantity <- floor(assigned_cash / abs(price))
+  #     
+  #     if ((price < 0 & entry_type == "compraSpreadBarato") | (price > 0 & entry_type == "vendeSpreadCaro")) {
+  #       new_margin_used <- new_margin_used + abs(assigned_cash * 0.5)
+  #     } else {
+  #       cash_outflows <- cash_outflows + assigned_cash
+  #     }
+  #     
+  #     if (entry_type == "compraSpreadBarato") {
+  #       addTxn(Portfolio = "portfolio.st", Symbol = pair, TxnDate = date, TxnPrice = price, TxnQty = quantity, TxnFees = 0)
+  #     } else if (entry_type == "vendeSpreadCaro") {
+  #       addTxn(Portfolio = "portfolio.st", Symbol = pair, TxnDate = date, TxnPrice = price, TxnQty = -quantity, TxnFees = 0)
+  #     }
+  #   }
+  #   
+  #   margin_used <- margin_used + new_margin_used
+  #   available_cash <- available_cash - cash_outflows
+  # }
+  # 
+  # updatePortf("portfolio.st")
+  # updateAcct("account.st")
+  # updateEndEq("account.st")
+  # 
+  # InvestedEquity <- getEndEq(Account = "account.st", Date = date)
+  # daily_pnl <- InvestedEquity - portfolio_state$InvestedEquity[nrow(portfolio_state)]
+  # 
+  # portfolio_state <<- rbind(portfolio_state, data.frame(
+  #   Date = date,
+  #   InvestedEquity = InvestedEquity,
+  #   Available_Cash = available_cash,
+  #   Margin_Used = margin_used,
+  #   Total_PnL = portfolio_state$Total_PnL[nrow(portfolio_state)] + daily_pnl,
+  #   Pct_Invested = (InvestedEquity - available_cash) / InvestedEquity,
+  #   Pct_Margin_Used = margin_used / InvestedEquity,
+  #   Pct_Cash_Available = available_cash / InvestedEquity
+  # ))
+}
+
+short_margin_pct <- 0.50
+maximo_peso_del_portafolio_para_una_sola_transaccion <- 0.25
+maximo_peso_del_portafolio_para_un_solo_dia <- 0.5
+
+
+dates <- seq.Date(from = as.Date(from)-1, to = as.Date(to), by = "days")
+pre.dates <- dates[0:86]
+
+for (date in pre.dates) {
+  daily_signals <- subset(all_signals_df, Date == date)
+  print(nrow(daily_signals))
+  update_portfolio_state(date, daily_signals)
+}
+
+today <- dates[length(pre.dates)+1]
+daily_signals <- subset(all_signals_df, Date == today)
+update_portfolio_state(today, daily_signals)
+
+#logica para despues comenzar las transacciones
+available_cash <- portfolio_state$Available_Cash[nrow(portfolio_state)]
+margin_used <- portfolio_state$Margin_Used[nrow(portfolio_state)]
+total_account_value <- portfolio_state$TotalAccountValue[nrow(portfolio_state)]
+invested_equity <- portfolio_state$InvestedEquity[nrow(portfolio_state)]
+
+available_cash
+margin_used
+total_account_value
+invested_equity
+
+
+total_inverse_sd <- sum(1 / daily_signals$SD)
+daily_signals$AbsoluteTradingWeight <- (1 / daily_signals$SD) / total_inverse_sd
+#posicion en neto
+daily_signals <- daily_signals %>% mutate(
+  net_position_type = case_when(
+    (Price < 0)&(EntryType == "compraSpreadBarato") ~ "NetShortPosition",
+    (Price > 0)&(EntryType == "vendeSpreadCaro") ~ "NetShortPosition",
+    (Price > 0)&(EntryType == "compraSpreadBarato") ~ "NetLongPosition",
+    (Price < 0)&(EntryType == "vendeSpreadCaro") ~ "NetLongPosition",
+  ),
+  
+)
+
+n.transacciones.hoy = nrow(daily_signals)
+max_capital_a_invertir_hoy = total_account_value * maximo_peso_del_portafolio_para_un_solo_dia
+max_capital_a_invertir_por_transaccion = total_account_value * maximo_peso_del_portafolio_para_una_sola_transaccion
+
+#asignas los pesos
+daily_signals <- daily_signals %>% mutate(
+  monto_a_invertir = case_when(
+    net_position_type == "NetShortPosition" ~ min(AbsoluteTradingWeight * max_capital_a_invertir_hoy, max_capital_a_invertir_por_transaccion),
+    net_position_type == "NetLongPosition" ~ min(AbsoluteTradingWeight * max_capital_a_invertir_hoy, max_capital_a_invertir_por_transaccion),
+  )
+)
+
+# 
+# #voy a distribuir en esta transacción hasta el 50% del equity (es una regla)
+# daily_signals
+# 
+# available_cash
+# margin_used
+# total_account_value
+# invested_equity
+cash_outflows <- 0
+new_margin_used <- 0
+leverage <- 0
+
+for (j in 1:nrow(daily_signals)) {
+  #j = 1
+  pair <- daily_signals$Pair[j]
+  entry_type <- daily_signals$EntryType[j]
+  price <- daily_signals$Price[j]
+  monto_a_invertir <- daily_signals$monto_a_invertir[j]
+  quantity <- floor(monto_a_invertir / abs(price))
+
+  if ((price < 0 & entry_type == "compraSpreadBarato") | (price > 0 & entry_type == "vendeSpreadCaro")) {
+    leverage <- leverage + abs(price*quantity)
+    new_margin_used <- new_margin_used + abs(monto_a_invertir * short_margin_pct)
+  } else {
+    cash_outflows <- cash_outflows + monto_a_invertir
+  }
+
+  if (entry_type == "compraSpreadBarato") {
+    addTxn(Portfolio = portfolio.st, Symbol = pair, TxnDate = today, TxnPrice = price, TxnQty = quantity, TxnFees = 0)
+  } else if (entry_type == "vendeSpreadCaro") {
+    addTxn(Portfolio = portfolio.st, Symbol = pair, TxnDate = today, TxnPrice = price, TxnQty = -quantity, TxnFees = 0)
+  }
+}
+
+margin_used <- margin_used + new_margin_used
+available_cash <- available_cash - cash_outflows
+leverage
+
+updatePortf(portfolio.st)
+updateAcct(account.st)
+updateEndEq(account.st)
+
+today
+dailyEqPL(Account = account.st, Portfolios = portfolio.st) #obtener el P&L diario para cada pareja
+extractTxns(Portfolio = portfolio.st) #obtener las transacciones)
+
+getPos(Portfolio = portfolio.st, Symbol = "GOOGL_TSLA", Date = to) #obtener la posición de un activo
+getPos(Portfolio = portfolio.st, Symbol = "TSLA_GOOGL", Date = to) #obtener la posición de un activo
+
+
+
+
+
+#InvestedEquity <- getEndEq(Account = account.st, Date = today) #esto esta mal
+#daily_pnl <- InvestedEquity - portfolio_state$InvestedEquity[nrow(portfolio_state)]
+
+# portfolio_state <<- rbind(portfolio_state, data.frame(
+#   Date = date,
+#   InvestedEquity = InvestedEquity,
+#   Available_Cash = available_cash,
+#   Margin_Used = margin_used,
+#   Total_PnL = portfolio_state$Total_PnL[nrow(portfolio_state)] + daily_pnl,
+#   Pct_Invested = (InvestedEquity - available_cash) / InvestedEquity,
+#   Pct_Margin_Used = margin_used / InvestedEquity,
+#   Pct_Cash_Available = available_cash / InvestedEquity
+# ))
+
+
+
+
+
+
+
+
+
+
 #----------------------
 # # Parámetro para el margen de posiciones cortas
 # short_margin_pct <- 0.50
@@ -492,10 +710,8 @@ initOrders(portfolio.st, initDate = from)
 #   portfolio_state$Pct_Cash_Available[i] <- portfolio_state$Available_Cash[i] / total_value
 # }
 #----------------------
-
 short_margin_pct <- 0.5
 Date <- seq.Date(from = as.Date(from) - 1, to = as.Date(to), by = "days")
-
 # Dataframe para almacenar el estado diario del portafolio
 portfolio_state <- data.frame(
   Date = Date,
@@ -509,34 +725,25 @@ portfolio_state <- data.frame(
   stringsAsFactors = FALSE
 )
 portfolio_state[1, "Available_Cash"] <- initEq
-
 # Lista para almacenar las posiciones abiertas
 open_positions <- list()
-
 # Iterar sobre cada día en el dataframe de señales
 for (i in 2:nrow(portfolio_state)) {
-
   date <- portfolio_state$Date[i]
   daily_signals <- subset(all_signals_df, Date == date)
-  
   if (nrow(daily_signals) == 0) {
     # Si no hay señales, simplemente copiamos el estado del día anterior
     portfolio_state[i, ] <- portfolio_state[i - 1, ]
     portfolio_state[i, "Date"] <- date
     next
   }
-  
   # Capital disponible para asignación
   available_cash <- portfolio_state$Available_Cash[i - 1]
-  
   # Proporción de asignación basado en SD inverso
   total_inverse_sd <- sum(1 / daily_signals$SD)
   daily_signals$Weight <- (1 / daily_signals$SD) / total_inverse_sd
-  
   # Asignar capital proporcionalmente
   daily_signals$Assigned_Cash <- daily_signals$Weight * available_cash
-  
-  
   margin_used = 0
   cash_outflows = 0
   # Procesar cada señal
@@ -546,12 +753,10 @@ for (i in 2:nrow(portfolio_state)) {
     price <- daily_signals$Price[j]
     assigned_cash <- daily_signals$Assigned_Cash[j]
     quantity <- floor(assigned_cash / abs(price))
-    
     if( (price < 0) & (entry_type == "compraSpreadBarato")  | (price > 0) & (entry_type == "vendeSpreadCaro") ){
       # Ajuste del capital en la cuenta de margen para operaciones en corto
       margin_used <- margin_used + abs(assigned_cash * short_margin_pct)
     }
-    
     if( (price > 0) & (entry_type == "compraSpreadBarato")  | (price < 0) & (entry_type == "vendeSpreadCaro") ){
       # Ajuste del capital en la cuenta de margen para operaciones en corto
       cash_outflows <- cash_outflows + assigned_cash
@@ -561,7 +766,6 @@ for (i in 2:nrow(portfolio_state)) {
     } else if (entry_type == "vendeSpreadCaro") {
       addTxn(Portfolio = portfolio.st, Symbol = pair, TxnDate = date, TxnPrice = price, TxnQty = -quantity, TxnFees = 0)
     }
-    
     # Registrar la posición abierta
     open_positions <- append(open_positions, list(list(
       Date = date,
@@ -574,12 +778,10 @@ for (i in 2:nrow(portfolio_state)) {
   portfolio_state$Margin_Used[i] <- portfolio_state$Margin_Used[i-1] + margin_used
   # Actualizar el efectivo disponible después de las asignaciones
   portfolio_state$Available_Cash[i] <- portfolio_state$Available_Cash[i - 1] - cash_outflows
-  
   # Actualizar portafolio y cuenta
   updatePortf(portfolio.st)
   updateAcct(account.st)
   updateEndEq(account.st)
-  
   # Calcular el P&L diario
   if(date < daily_signals[1,]$Date){
     equity = 0
@@ -587,24 +789,20 @@ for (i in 2:nrow(portfolio_state)) {
     equity <- getEndEq(Account = account.st, Date = date)
   }
   daily_pnl <- equity - portfolio_state$Equity[i - 1]
-  
   # Actualizar el equity y el efectivo disponible
   portfolio_state$Equity[i] <- equity
   #portfolio_state$Available_Cash[i] <- portfolio_state$Available_Cash[i - 1] + daily_pnl
   portfolio_state$Total_PnL[i] <- portfolio_state$Total_PnL[i - 1] + daily_pnl
-  
   # Monitorización
   total_value <- sum(portfolio_state$Equity[i], portfolio_state$Available_Cash[i])
   portfolio_state$Pct_Invested[i] <- (portfolio_state$Equity[i] - portfolio_state$Available_Cash[i]) / total_value
   portfolio_state$Pct_Margin_Used[i] <- portfolio_state$Margin_Used[i] / total_value
   portfolio_state$Pct_Cash_Available[i] <- portfolio_state$Available_Cash[i] / total_value
 }
-
 View(portfolio_state)
 port <- getPortfolio(portfolio.st)
 dailyTxnPL(Portfolios = portfolio.st)
 getTxns(Portfolio = portfolio.st,Symbol = "GOOGL_TSLA")
 getTxns(Portfolio = portfolio.st,Symbol = "TSLA_GOOGL")
-
 head(portfolio_state)
 View(portfolio_state)
