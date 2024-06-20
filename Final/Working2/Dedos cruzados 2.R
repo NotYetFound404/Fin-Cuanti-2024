@@ -1,5 +1,4 @@
-#libraries-------------
-library(quantmod)
+
 library(blotter)
 library(FinancialInstrument)
 library(dplyr)
@@ -28,10 +27,12 @@ to <- "2024-05-31"
 #                'EBAY')
 #mySymbols <- c('GOOGL', 'TSLA')
 mySymbols <- c(tq_index("SP500")$symbol, "SPY")
+mySymbols <- head(mySymbols, 3)
+
 currency("USD")
-ls_instruments()
+#ls_instruments()
 map(mySymbols, ~stock(.x, currency = "USD", multiplier = 1)) #use stock function for each symbol
-ls_instruments()#check if working
+#ls_instruments()#check if working
 #3. Define spreads
 spread_names <- expand.grid(mySymbols, mySymbols) %>%
   filter(Var1 != Var2) %>%
@@ -41,23 +42,45 @@ spread_names <- expand.grid(mySymbols, mySymbols) %>%
   unique()
 map(spread_names, ~FinancialInstrument::spread(.x, "USD", unlist(strsplit(.x, "_")), c(1, -1))) #use spred function for each pair
 
-ls_instruments()#check if working
+#ls_instruments()#check if working
 getSymbols(mySymbols, src = 'yahoo', from = from, to = to)
 map(spread_names, ~{
   pair <- unlist(strsplit(.x, "_"))
   spread <- get(pair[1]) - get(pair[2])
   assign(.x, spread, envir = .GlobalEnv)
 })
-#Params --------------------------
+
+# 2. Strategy implementation
+
+initEq <- 100000
 window = 60
 pValueTresh  = 0.05
-symb <- spread_names[[1]]
 zscoreThresh = 1
 rankingSDTresh = 10
 take_profit <- 0.15 
 stop_loss <- 0.5
-initEq = 1000
+percentageTraded <- 0.1
+#-----------------------
+## Install and load necessary packages
+library(quantmod)
+library(blotter)
+library(FinancialInstrument)
+library(dplyr)
+library(purrr)
+#----------------
+# Ensure new environment is clean
+.blotter <- new.env()
 
+currency("USD"); .blotter <- new.env(); .strategy <- new.env(); Sys.setenv(TZ="UTC");Sys.setenv(TZ="UTC"); strategy.st <- portfolio.st <- account.st <- "firststrat";rm.strat(strategy.st)
+initPortf(portfolio.st, symbols = spread_names, initDate = from, currency = "USD")
+initAcct(account.st, portfolios = portfolio.st, initDate = from, currency = "USD", initEq = initEq)
+initOrders(portfolio.st, initDate = from)
+
+
+# Set the timezone to avoid potential issues with date/time
+Sys.setenv(TZ = "UTC")
+# Initialize the environment
+currency("USD")
 #funtions--------------
 cointegrationIndicator <- function(pair_name, n = 60, pTresh) {
   # pTresh= 0.35# pair_name = symb
@@ -188,13 +211,65 @@ add_daily_signals <- function(signals) {
 }
 # Crear el registro de todas las señales
 all_signals_df <- add_daily_signals(signals); all_signals_df$Pair <- gsub("\\.price", "", all_signals_df$Pair)#eliminar .price
+dates <- sort(unique(all_signals_df$Date))
+for(date in dates){
+  daily_signals <- subset(all_signals_df, Date == date)
+  
+  equity <- getEndEq(Account = account.st, Date = date)
+  total_inverse_sd <- sum(1 / daily_signals$SD)
+  daily_signals$Weight <- (1 / daily_signals$SD) / total_inverse_sd
+  daily_signals$Assigned_Cash <- daily_signals$Weight * equity*percentageTraded
+  
+  for (j in 1:nrow(daily_signals)) {
+    pair <- daily_signals$Pair[j]
+    entry_type <- daily_signals$EntryType[j]
+    price <- daily_signals$Price[j]
+    assigned_cash <- daily_signals$Assigned_Cash[j]
+    quantity <- floor(assigned_cash / abs(price))
+    
+    if (entry_type == "compraSpreadBarato") {
+      addTxn(Portfolio = portfolio.st, Symbol = pair, TxnDate = date, TxnPrice = price, TxnQty = quantity, TxnFees = 0)
+    } else if (entry_type == "vendeSpreadCaro") {
+      addTxn(Portfolio = portfolio.st, Symbol = pair, TxnDate = date, TxnPrice = price, TxnQty = -quantity, TxnFees = 0)
+    }
+  }
+  updatePortf(portfolio.st); updateAcct(account.st); updateEndEq(account.st)
+}
 
-#remover del .evn todo menos all_signals_df
-rm(list = setdiff(ls(), "all_signals_df"))
-save.image("Final/Working2/signalsDF.RData")
+
+#medidas de retorno
+myAccount <- getAccount(account.st)
+myPortfolio <- getPortfolio(portfolio.st)
+# Calculate daily equity PL
+stats1 <- dailyStats(Portfolios = portfolio.st)
+t(stats1)
+dailyPL <- dailyEqPL(Portfolios = portfolio.st)
+
+#stats
+tStats <- tradeStats(Portfolios = portfolio.st)
+t(tStats)
+port.Summ <- myPortfolio$summary
+#returns
+rets <- PortfReturns(Account = account.st)
+rownames(rets) <- NULL
+charts.PerformanceSummary(rets, colorset = bluefocus)
+initEq
+getEndEq(account.st,to)
+
+retornosAcumulados <- cumsum(rets)
+account.equity <- getAccount(account.st)$summary$End.Eq
+portfolio.returns <- diff(log(account.equity))
+portfolio.returns <- na.omit(portfolio.returns)
+total_return <- cumsum(portfolio.returns)%>% tail(1)
 
 
+annualized.sd <- StdDev.annualized(portfolio.returns)
+max.drawdown <- maxDrawdown(portfolio.returns)
+sharpe.ratio <- SharpeRatio.annualized(portfolio.returns, Rf = 0.01 / 252) # Asumiendo un 1% de tasa libre de riesgo anual
 
 
-
-
+cat("Annualized Total Return:", annualized.total.return, "\n")
+cat("Average Monthly Return:", average.monthly.return, "\n")
+cat("Annualized Standard Deviation:", annualized.sd, "\n")
+cat("Maximum Drawdown:", max.drawdown, "\n")
+cat("Sharpe Ratio:", sharpe.ratio, "\n")
