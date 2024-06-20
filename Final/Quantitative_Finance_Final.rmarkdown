@@ -63,7 +63,7 @@ to <- "2024-05-31"
 #                'EBAY')
 #mySymbols <- c('GOOGL', 'TSLA')
 mySymbols <- c(tq_index("SP500")$symbol, "SPY")
-mySymbols <- head(mySymbols, 3)
+mySymbols <- head(mySymbols, 30)
 
 currency("USD")
 #ls_instruments()
@@ -100,9 +100,14 @@ window = 60
 pValueTresh  = 0.05
 zscoreThresh = 1
 rankingSDTresh = 10
-take_profit <- 0.15 
+
+take_profit <- 0.2
+
+
 stop_loss <- 0.5
 percentageTraded <- 0.1
+
+max_drawdawn = 0.2
 ```
 
 
@@ -268,7 +273,7 @@ all_signals_df <- add_daily_signals(signals); all_signals_df$Pair <- gsub("\\.pr
 Revisar señales
 
 ```{r}
-all_signals_df
+head(all_signals_df)
 ```
 
 
@@ -281,6 +286,8 @@ logic for signal application
 #| results: hide
 dates <- sort(unique(all_signals_df$Date))
 for(date in dates){
+
+  #date <- dates[[1]]
   daily_signals <- subset(all_signals_df, Date == date)
   
   equity <- getEndEq(Account = account.st, Date = date)
@@ -296,12 +303,32 @@ for(date in dates){
     quantity <- floor(assigned_cash / abs(price))
     
     if (entry_type == "compraSpreadBarato") {
-      addTxn(Portfolio = portfolio.st, Symbol = pair, TxnDate = date, TxnPrice = price, TxnQty = -quantity, TxnFees = 0)
+      addTxn(Portfolio = portfolio.st, Symbol = pair, TxnDate = date, TxnPrice = price, TxnQty = quantity, TxnFees = 0)
     } else if (entry_type == "vendeSpreadCaro") {
-      addTxn(Portfolio = portfolio.st, Symbol = pair, TxnDate = date, TxnPrice = price, TxnQty = +quantity, TxnFees = 0)
+      addTxn(Portfolio = portfolio.st, Symbol = pair, TxnDate = date, TxnPrice = price, TxnQty = -quantity, TxnFees = 0)
     }
   }
   updatePortf(portfolio.st); updateAcct(account.st); updateEndEq(account.st)
+  
+  
+#   equity <- getEndEq(Account = account.st, Date = date)
+#   return_percentage <- (equity - initEq) / initEq
+# 
+#   if((return_percentage < -max_drawdawn))  {
+#     #cerrar posiciones
+#   for(symb in spread_names){
+#       pos <- getPos(Portfolio = portfolio.st, Symbol = symb, Date = date)
+#       if(pos$Pos.Qty != 0){
+#          addTxn(Portfolio = portfolio.st, Symbol = symb, TxnDate = date, TxnPrice = Cl(get(symb))[date][[1]], TxnQty = -pos$Pos.Qty[[1]], TxnFees = 0)
+#       }
+#   }
+# }
+
+  
+  
+  
+  
+  
 }
 ```
 
