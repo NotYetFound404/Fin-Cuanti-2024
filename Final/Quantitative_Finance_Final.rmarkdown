@@ -284,8 +284,15 @@ logic for signal application
 
 ```{r}
 #| results: hide
+
+library(foreach)
+library(doParallel)
+
+cl <- makeCluster(7)
+registerDoParallel(cl)
+
 dates <- sort(unique(all_signals_df$Date))
-for(date in dates){
+foreach(date = dates) %dopar% {
 
   #date <- dates[[1]]
   daily_signals <- subset(all_signals_df, Date == date)
@@ -309,26 +316,6 @@ for(date in dates){
     }
   }
   updatePortf(portfolio.st); updateAcct(account.st); updateEndEq(account.st)
-  
-  
-#   equity <- getEndEq(Account = account.st, Date = date)
-#   return_percentage <- (equity - initEq) / initEq
-# 
-#   if((return_percentage < -max_drawdawn))  {
-#     #cerrar posiciones
-#   for(symb in spread_names){
-#       pos <- getPos(Portfolio = portfolio.st, Symbol = symb, Date = date)
-#       if(pos$Pos.Qty != 0){
-#          addTxn(Portfolio = portfolio.st, Symbol = symb, TxnDate = date, TxnPrice = Cl(get(symb))[date][[1]], TxnQty = -pos$Pos.Qty[[1]], TxnFees = 0)
-#       }
-#   }
-# }
-
-  
-  
-  
-  
-  
 }
 ```
 
